@@ -1,0 +1,2320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>The Cleveland Foundation — DAF Donor Portal (Prototype)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Paralucent Bold unavailable on Google Fonts; using Bricolage Grotesque as a near-substitute for the headers. Source Sans Pro per brand. -->
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     Cleveland Foundation Brand Tokens
+     Pulled from TCF Style Guide (Fonts & Color Palette)
+     ============================================================ */
+  :root {
+    --tcf-primary: #164430;       /* Dark Green */
+    --tcf-secondary: #F3F1EF;     /* Off-white */
+    --tcf-orange: #EE7331;        /* Accent 1 */
+    --tcf-mid-green: #086C43;     /* Accent 2 */
+    --tcf-red: #CC1E4B;           /* Accent 3 */
+    --tcf-aqua: #19B9A9;          /* Accent 4 */
+    --tcf-blue: #1A8DA9;          /* Accent 5 */
+    --tcf-pink: #C0629A;          /* Accent 6 */
+    --tcf-black: #000000;         /* Accent 7 */
+    --tcf-gray: #F3F2F0;          /* Accent 8 */
+    --tcf-light-orange: #DBD5CA;  /* Accent 9 */
+
+    /* Working tokens derived from brand */
+    --bg: #FAF8F5;
+    --surface: #FFFFFF;
+    --surface-2: var(--tcf-gray);
+    --ink: #1B2520;
+    --ink-soft: #51605A;
+    --ink-faint: #8A968F;
+    --border: #E5E1DA;
+    --border-strong: #C8C2B6;
+
+    --font-head: 'Bricolage Grotesque', 'Paralucent Bold', Georgia, serif;
+    --font-body: 'Source Sans 3', 'Source Sans Pro', -apple-system, sans-serif;
+
+    --radius-sm: 6px;
+    --radius: 10px;
+    --radius-lg: 16px;
+
+    --shadow-sm: 0 1px 2px rgba(22,68,48,0.06);
+    --shadow: 0 4px 14px rgba(22,68,48,0.08);
+    --shadow-lg: 0 10px 40px rgba(22,68,48,0.12);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--ink);
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,h2,h3,h4,h5 { font-family: var(--font-head); font-weight: 700; color: var(--tcf-primary); letter-spacing: -0.01em; }
+  h1 { font-size: 32px; line-height: 1.15; }
+  h2 { font-size: 22px; line-height: 1.2; }
+  h3 { font-size: 17px; line-height: 1.3; }
+  a { color: var(--tcf-mid-green); text-decoration: none; }
+  button { font-family: inherit; cursor: pointer; border: none; background: none; }
+  input, select, textarea { font-family: inherit; font-size: inherit; }
+
+  /* ============================================================
+     Integration Pin — visible markers for integration / config / setup points.
+     Click to read what's wired where.
+     ============================================================ */
+  .ipin {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px 2px 6px;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    border-radius: 999px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: transform .08s ease, box-shadow .12s ease;
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+  .ipin:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+  .ipin::before {
+    content: '';
+    width: 6px; height: 6px; border-radius: 50%;
+    background: currentColor;
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.6);
+  }
+  .ipin-integration { background: #FDEDE2; color: var(--tcf-orange); border-color: #F8D6BD; }
+  .ipin-config      { background: #E0EAE5; color: var(--tcf-mid-green); border-color: #BFD3CA; }
+  .ipin-setup       { background: #DCEEF1; color: var(--tcf-blue); border-color: #B5DAE0; }
+  .ipin-security    { background: #FBE0E8; color: var(--tcf-red); border-color: #F2C2D0; }
+  .ipin-event       { background: #E7F6F4; color: #0E8378; border-color: #B5E2DC; }
+
+  /* Floating banner toggle for showing/hiding integration pins */
+  .pin-toggle {
+    position: fixed; bottom: 22px; right: 22px;
+    background: var(--tcf-primary); color: white;
+    padding: 12px 18px;
+    border-radius: 999px;
+    font-weight: 600; font-size: 13px;
+    box-shadow: var(--shadow-lg);
+    z-index: 200;
+    display: inline-flex; gap: 8px; align-items: center;
+  }
+  .pin-toggle .swatch { display: flex; gap: 3px; }
+  .pin-toggle .swatch span { width: 8px; height: 8px; border-radius: 50%; }
+  body.pins-hidden .ipin { display: none !important; }
+
+  /* Modal for integration pin details */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(22,68,48,0.55);
+    backdrop-filter: blur(4px);
+    display: none; align-items: center; justify-content: center;
+    z-index: 300; padding: 20px;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    max-width: 620px; width: 100%;
+    max-height: 88vh; overflow-y: auto;
+    box-shadow: var(--shadow-lg);
+    border-top: 6px solid var(--tcf-orange);
+  }
+  .modal-head { padding: 22px 26px 14px; border-bottom: 1px solid var(--border); }
+  .modal-head .kind { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--tcf-orange); }
+  .modal-head h3 { margin-top: 4px; font-size: 22px; }
+  .modal-body { padding: 18px 26px 26px; }
+  .modal-body p { margin-bottom: 10px; color: var(--ink-soft); }
+  .modal-body .label { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--tcf-primary); margin: 14px 0 6px; }
+  .modal-body code, .modal-body .mono {
+    font-family: 'SF Mono', Menlo, monospace; font-size: 12.5px;
+    background: var(--surface-2); padding: 2px 6px; border-radius: 4px;
+    color: var(--tcf-primary);
+  }
+  .modal-body pre {
+    background: #0F2E22; color: #C9E0D5;
+    padding: 14px; border-radius: 8px;
+    font-family: 'SF Mono', Menlo, monospace; font-size: 12px;
+    overflow-x: auto; margin: 6px 0 14px;
+    line-height: 1.55;
+  }
+  .modal-close {
+    position: sticky; top: 0; float: right;
+    margin: 12px 14px 0 0;
+    background: var(--surface-2); border-radius: 50%;
+    width: 30px; height: 30px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 16px; color: var(--ink-soft);
+  }
+
+  /* ============================================================
+     Layout — App Shell
+     ============================================================ */
+  .app {
+    display: grid;
+    grid-template-columns: 248px 1fr;
+    min-height: 100vh;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    background: var(--tcf-primary);
+    color: #DCE5DF;
+    padding: 24px 0;
+    position: sticky; top: 0; height: 100vh;
+    display: flex; flex-direction: column;
+  }
+  .brand {
+    padding: 0 24px 22px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    margin-bottom: 16px;
+  }
+  .brand-mark {
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--font-head); font-weight: 700;
+    font-size: 16px; color: #fff;
+    line-height: 1.1;
+  }
+  .brand-mark .logo {
+    width: 36px; height: 36px;
+    background: var(--tcf-orange);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-head);
+    color: var(--tcf-primary);
+    font-weight: 700; font-size: 18px;
+    flex-shrink: 0;
+  }
+  .brand-mark .sub { font-size: 11px; color: #9DB3A6; font-weight: 400; font-family: var(--font-body); letter-spacing: 0.04em; text-transform: uppercase; }
+
+  .nav-section { padding: 0 14px; }
+  .nav-label { font-size: 10.5px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #7A9387; padding: 14px 10px 8px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px;
+    color: #C8D6CE;
+    border-radius: 8px;
+    font-size: 14px; font-weight: 500;
+    cursor: pointer;
+    width: 100%; text-align: left;
+    transition: background .12s, color .12s;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
+  .nav-item.active { background: rgba(238,115,49,0.18); color: #fff; }
+  .nav-item.active::before {
+    content: ''; width: 3px; height: 18px;
+    background: var(--tcf-orange);
+    border-radius: 0 2px 2px 0;
+    margin-left: -15px; margin-right: 12px;
+  }
+  .nav-item .icon { width: 18px; height: 18px; flex-shrink: 0; opacity: 0.85; }
+  .nav-item .count { margin-left: auto; background: rgba(255,255,255,0.1); color: #fff; font-size: 11px; padding: 1px 7px; border-radius: 10px; font-weight: 600; }
+
+  .sidebar-foot {
+    margin-top: auto; padding: 18px 24px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    font-size: 12px; color: #7A9387;
+  }
+  .sidebar-foot .user {
+    display: flex; gap: 10px; align-items: center;
+    padding: 8px 0;
+  }
+  .avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--tcf-aqua);
+    color: var(--tcf-primary);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 13px;
+    flex-shrink: 0;
+  }
+  .user-info .name { color: #fff; font-weight: 600; font-size: 13px; }
+
+  /* Main */
+  .main { padding: 0; min-width: 0; }
+  .topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 36px;
+    display: flex; align-items: center; gap: 18px;
+    position: sticky; top: 0; z-index: 50;
+  }
+  .breadcrumb { font-size: 13px; color: var(--ink-faint); }
+  .breadcrumb b { color: var(--ink); font-weight: 600; }
+  .topbar-actions { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+  .icon-btn {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--surface-2);
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--ink-soft);
+    position: relative;
+  }
+  .icon-btn:hover { background: var(--border); }
+  .icon-btn .dot { position: absolute; top: 8px; right: 8px; width: 8px; height: 8px; background: var(--tcf-orange); border-radius: 50%; border: 2px solid var(--surface); }
+
+  .page { padding: 32px 36px 60px; max-width: 1400px; }
+  .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 28px; flex-wrap: wrap; }
+  .page-head .eyebrow { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--tcf-orange); margin-bottom: 6px; }
+  .page-head p.lede { color: var(--ink-soft); margin-top: 8px; max-width: 680px; }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 18px;
+    border-radius: 8px; font-weight: 600; font-size: 14px;
+    transition: transform .08s, box-shadow .12s, background .12s;
+  }
+  .btn-primary { background: var(--tcf-primary); color: #fff; }
+  .btn-primary:hover { background: #0F3322; box-shadow: var(--shadow); }
+  .btn-accent { background: var(--tcf-orange); color: #fff; }
+  .btn-accent:hover { background: #D86426; }
+  .btn-ghost { background: var(--surface); color: var(--tcf-primary); border: 1px solid var(--border-strong); }
+  .btn-ghost:hover { background: var(--surface-2); }
+  .btn-sm { padding: 6px 12px; font-size: 13px; }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px;
+    box-shadow: var(--shadow-sm);
+    position: relative;
+  }
+  .card.lift:hover { box-shadow: var(--shadow); }
+  .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+  .card-head h3 { margin: 0; }
+  .card-head .more { color: var(--ink-faint); font-size: 13px; }
+
+  /* Widget grid for customizable home */
+  .widget-grid {
+    display: grid; grid-template-columns: repeat(12, 1fr); gap: 20px;
+  }
+  .widget { grid-column: span 4; min-height: 100px; }
+  .widget.w6 { grid-column: span 6; }
+  .widget.w8 { grid-column: span 8; }
+  .widget.w12 { grid-column: span 12; }
+  .widget.draggable {
+    cursor: grab;
+  }
+  .widget.draggable:active { cursor: grabbing; }
+  .widget .drag-handle {
+    position: absolute; top: 18px; right: 18px;
+    color: var(--ink-faint); font-size: 14px;
+    opacity: 0; transition: opacity .15s;
+  }
+  body.edit-mode .widget { border: 2px dashed var(--tcf-orange); }
+  body.edit-mode .widget .drag-handle { opacity: 1; }
+
+  /* Hero / banner */
+  .hero {
+    background: linear-gradient(135deg, var(--tcf-primary) 0%, #0A2D1E 50%, var(--tcf-mid-green) 100%);
+    color: #fff;
+    border-radius: var(--radius-lg);
+    padding: 30px 32px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::after {
+    content: '';
+    position: absolute; right: -60px; bottom: -60px;
+    width: 240px; height: 240px;
+    background: radial-gradient(circle, var(--tcf-orange) 0%, transparent 70%);
+    opacity: 0.18;
+  }
+  .hero h2 { color: #fff; font-size: 26px; }
+  .hero p { color: #C8D6CE; margin-top: 6px; max-width: 540px; }
+  .hero-actions { margin-top: 18px; display: flex; gap: 10px; }
+  .hero .btn-accent { background: var(--tcf-orange); color: #fff; }
+  .hero .btn-ghost { background: transparent; color: #fff; border-color: rgba(255,255,255,0.4); }
+
+  /* Stat / metric */
+  .stat-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-faint); font-weight: 600; }
+  .stat-value { font-family: var(--font-head); font-size: 32px; font-weight: 700; color: var(--tcf-primary); margin: 4px 0 2px; letter-spacing: -0.02em; }
+  .stat-delta { font-size: 13px; font-weight: 600; }
+  .stat-delta.up { color: var(--tcf-mid-green); }
+  .stat-delta.down { color: var(--tcf-red); }
+
+  /* Badges */
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11.5px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .badge-entered { background: #FDEDE2; color: var(--tcf-orange); }
+  .badge-approved { background: #DCEEF1; color: var(--tcf-blue); }
+  .badge-posted { background: #DCEEE3; color: var(--tcf-mid-green); }
+  .badge-pending { background: var(--tcf-light-orange); color: #7C6440; }
+
+  /* Tables */
+  table.data { width: 100%; border-collapse: collapse; }
+  table.data th {
+    text-align: left;
+    font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--ink-faint);
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  table.data td {
+    padding: 14px 12px;
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+    vertical-align: middle;
+  }
+  table.data tr:last-child td { border-bottom: none; }
+  table.data tr:hover td { background: var(--surface-2); }
+  .recipient { display: flex; align-items: center; gap: 10px; }
+  .recipient .org-mark {
+    width: 32px; height: 32px; border-radius: 6px;
+    background: var(--tcf-aqua); color: var(--tcf-primary);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 13px;
+    flex-shrink: 0;
+  }
+  .recipient .org-mark.alt-1 { background: var(--tcf-pink); color: #fff; }
+  .recipient .org-mark.alt-2 { background: var(--tcf-orange); color: #fff; }
+  .recipient .org-mark.alt-3 { background: var(--tcf-blue); color: #fff; }
+  .recipient .org-mark.alt-4 { background: var(--tcf-mid-green); color: #fff; }
+  .recipient .meta { font-size: 12px; color: var(--ink-faint); }
+
+  /* Cart pill in nav */
+  .cart-pill {
+    background: var(--tcf-orange);
+    color: #fff !important;
+    font-weight: 700;
+  }
+
+  /* Forms */
+  .form-row { margin-bottom: 16px; }
+  .form-row label { display: block; font-size: 12.5px; font-weight: 600; color: var(--tcf-primary); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .form-row input, .form-row select, .form-row textarea {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    background: var(--surface);
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .form-row input:focus, .form-row select:focus, .form-row textarea:focus {
+    outline: none; border-color: var(--tcf-mid-green);
+    box-shadow: 0 0 0 3px rgba(8,108,67,0.12);
+  }
+  .help-text { font-size: 12px; color: var(--ink-faint); margin-top: 4px; }
+
+  /* Section sub-tabs */
+  .subtabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 24px; }
+  .subtab {
+    padding: 10px 16px;
+    font-size: 14px; font-weight: 600;
+    color: var(--ink-faint);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .subtab.active { color: var(--tcf-primary); border-bottom-color: var(--tcf-orange); }
+  .subtab:hover:not(.active) { color: var(--ink); }
+
+  /* Performance chart */
+  .perf-chart { width: 100%; height: 240px; }
+
+  /* News / story card */
+  .story {
+    display: flex; gap: 14px;
+    padding: 14px 0; border-bottom: 1px solid var(--border);
+  }
+  .story:last-child { border-bottom: none; }
+  .story .thumb {
+    width: 76px; height: 76px;
+    border-radius: 8px;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, var(--tcf-aqua), var(--tcf-blue));
+  }
+  .story .thumb.t1 { background: linear-gradient(135deg, var(--tcf-orange), var(--tcf-red)); }
+  .story .thumb.t2 { background: linear-gradient(135deg, var(--tcf-mid-green), var(--tcf-primary)); }
+  .story .thumb.t3 { background: linear-gradient(135deg, var(--tcf-pink), var(--tcf-red)); }
+  .story h4 { font-family: var(--font-head); color: var(--tcf-primary); font-size: 15px; font-weight: 700; margin-bottom: 4px; line-height: 1.3; }
+  .story .tag { font-size: 11px; font-weight: 600; color: var(--tcf-orange); text-transform: uppercase; letter-spacing: 0.05em; }
+  .story .excerpt { font-size: 13px; color: var(--ink-soft); }
+
+  /* Page sections (hidden/shown by JS) */
+  .view { display: none; }
+  .view.active { display: block; animation: fadeIn 0.25s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  /* Cart drawer */
+  .cart-drawer {
+    position: fixed; top: 0; right: 0; bottom: 0;
+    width: 420px; max-width: 100%;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    box-shadow: var(--shadow-lg);
+    transform: translateX(100%);
+    transition: transform .25s ease;
+    z-index: 150;
+    display: flex; flex-direction: column;
+  }
+  .cart-drawer.open { transform: none; }
+  .cart-head {
+    padding: 22px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .cart-body { flex: 1; overflow-y: auto; padding: 18px 24px; }
+  .cart-foot { padding: 20px 24px; border-top: 1px solid var(--border); background: var(--surface-2); }
+  .cart-item {
+    display: flex; gap: 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .cart-item:last-child { border-bottom: none; }
+  .cart-item .amount { font-weight: 700; color: var(--tcf-primary); }
+  .cart-empty { text-align: center; padding: 40px 20px; color: var(--ink-faint); }
+  .cart-total { display: flex; justify-content: space-between; font-size: 18px; font-weight: 700; color: var(--tcf-primary); margin-bottom: 14px; }
+
+  /* MFA / Login modal demo */
+  .mfa-card {
+    max-width: 420px;
+    background: var(--surface);
+    padding: 36px 32px;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    margin: 60px auto;
+    border-top: 6px solid var(--tcf-orange);
+  }
+
+  /* Integration map */
+  .arch-diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .arch-layer {
+    display: grid; gap: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    margin-bottom: 18px;
+  }
+  .arch-layer-label {
+    font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--ink-faint);
+    margin-bottom: 8px;
+  }
+  .arch-box {
+    padding: 14px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    font-size: 13px;
+  }
+  .arch-box .box-title { font-family: var(--font-head); font-weight: 700; color: var(--tcf-primary); margin-bottom: 3px; }
+  .arch-box .box-desc { font-size: 12px; color: var(--ink-faint); }
+  .arch-box.edge { background: #F5EFE8; border-color: var(--tcf-light-orange); }
+  .arch-box.presentation { background: #E0EAE5; border-color: #BFD3CA; }
+  .arch-box.bff { background: #FDEDE2; border-color: #F8D6BD; }
+  .arch-box.integration { background: #DCEEF1; border-color: #B5DAE0; }
+  .arch-box.workflow { background: #E7F6F4; border-color: #B5E2DC; }
+  .arch-box.data { background: #FBE0E8; border-color: #F2C2D0; }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--tcf-primary); color: #fff;
+    padding: 14px 22px; border-radius: 8px;
+    box-shadow: var(--shadow-lg);
+    opacity: 0; transition: all .25s ease;
+    z-index: 250;
+    font-weight: 500;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Status pipeline */
+  .status-pipeline { display: flex; gap: 0; align-items: center; margin: 14px 0; }
+  .status-step {
+    flex: 1; padding: 8px 10px;
+    background: var(--surface-2); color: var(--ink-faint);
+    font-size: 12px; font-weight: 600;
+    text-align: center;
+    position: relative;
+  }
+  .status-step:first-child { border-radius: 6px 0 0 6px; }
+  .status-step:last-child { border-radius: 0 6px 6px 0; }
+  .status-step.done { background: var(--tcf-mid-green); color: #fff; }
+  .status-step.current { background: var(--tcf-orange); color: #fff; }
+
+  /* Mini chart container */
+  .mini-chart { position: relative; height: 60px; }
+
+  /* Mobile / PWA Indicator */
+  .pwa-note {
+    background: linear-gradient(90deg, rgba(238,115,49,0.08), transparent);
+    border-left: 3px solid var(--tcf-orange);
+    padding: 10px 14px;
+    border-radius: 4px;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    margin-bottom: 20px;
+  }
+
+  /* Family / invitee list */
+  .invitee-row {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 0; border-bottom: 1px solid var(--border);
+  }
+  .invitee-row:last-child { border-bottom: none; }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar { position: static; height: auto; flex-direction: row; padding: 14px; overflow-x: auto; }
+    .nav-label { display: none; }
+    .nav-section { display: flex; gap: 4px; }
+    .nav-item { flex-shrink: 0; }
+    .widget, .widget.w6, .widget.w8 { grid-column: span 12; }
+    .page { padding: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     SIDEBAR
+     ============================================================ -->
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">
+        <div class="logo">cf</div>
+        <div>
+          The Cleveland Foundation
+          <div class="sub">DAF Donor Portal</div>
+        </div>
+      </div>
+    </div>
+
+    <nav class="nav-section">
+      <div class="nav-label">My Giving</div>
+      <button class="nav-item active" data-view="home">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l9-9 9 9M5 10v10h14V10"/></svg>
+        Home
+      </button>
+      <button class="nav-item" data-view="funds">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9 9.5h4a2 2 0 010 4H10a2 2 0 000 4h5"/></svg>
+        My Funds
+      </button>
+      <button class="nav-item" data-view="contributions">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        Contributions
+      </button>
+      <button class="nav-item" data-view="grants">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg>
+        Grants
+      </button>
+      <button class="nav-item" data-view="cart">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h2l3 12h12l2-8H6"/><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/></svg>
+        Grant Cart
+        <span class="count cart-pill" id="cartCountNav">3</span>
+      </button>
+      <button class="nav-item" data-view="performance">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>
+        Performance
+      </button>
+    </nav>
+
+    <nav class="nav-section">
+      <div class="nav-label">Engagement</div>
+      <button class="nav-item" data-view="impact">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-4.5-7-10a7 7 0 0114 0c0 5.5-7 10-7 10z"/><circle cx="12" cy="11" r="2"/></svg>
+        Impact &amp; Stories
+      </button>
+      <button class="nav-item" data-view="advisor">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.4 8.4 0 01-1 4 8.5 8.5 0 01-7.6 4.5 8.4 8.4 0 01-4-1L3 21l2-5a8.5 8.5 0 014-11.5 8.4 8.4 0 014-1 8.5 8.5 0 018 8z"/></svg>
+        My Advisor
+      </button>
+    </nav>
+
+    <nav class="nav-section">
+      <div class="nav-label">Account</div>
+      <button class="nav-item" data-view="family">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3"/><path d="M3 21v-2a4 4 0 014-4h4a4 4 0 014 4v2"/><circle cx="17" cy="8" r="3"/><path d="M21 21v-1.5a3.5 3.5 0 00-3-3.46"/></svg>
+        Family Access
+      </button>
+      <button class="nav-item" data-view="settings">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>
+        Settings &amp; Security
+      </button>
+      <button class="nav-item" data-view="architecture">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Architecture Map
+      </button>
+    </nav>
+
+    <div class="sidebar-foot">
+      <div class="user">
+        <div class="avatar">EM</div>
+        <div class="user-info">
+          <div class="name">Eleanor Mitchell</div>
+          <div>Primary Advisor</div>
+        </div>
+      </div>
+      <span class="ipin ipin-setup" data-pin="idp">IdP Session</span>
+    </div>
+  </aside>
+
+  <!-- ============================================================
+       MAIN
+       ============================================================ -->
+  <main class="main">
+    <div class="topbar">
+      <div class="breadcrumb">Cleveland Foundation <b id="bcrumb">/ Home</b></div>
+      <div class="topbar-actions">
+        <span class="ipin ipin-security" data-pin="security-headers">Edge / WAF</span>
+        <button class="icon-btn" title="Notifications" onclick="showToast('3 unread: 1 grant Posted, 2 stories')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 1112 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 003.4 0"/></svg>
+          <span class="dot"></span>
+        </button>
+        <button class="icon-btn" title="Open Grant Cart" onclick="toggleCart()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h2l3 12h12l2-8H6"/></svg>
+          <span class="dot" id="cartDotTop"></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- =============================================================
+         VIEW: HOME (customizable widgets)
+         ============================================================= -->
+    <div class="view active" id="view-home">
+      <div class="page">
+        <div class="page-head">
+          <div>
+            <div class="eyebrow">Welcome back</div>
+            <h1>Good afternoon, Eleanor.</h1>
+            <p class="lede">A snapshot of your charitable giving. Drag widgets to reorder, or hide ones you don't use.</p>
+          </div>
+          <div style="display:flex; gap:10px; align-items:center;">
+            <span class="ipin ipin-config" data-pin="home-layout">Layout Config</span>
+            <button class="btn btn-ghost btn-sm" onclick="toggleEditMode()" id="editBtn">Customize Home</button>
+          </div>
+        </div>
+
+        <div class="pwa-note">
+          📱 You're viewing the installable Progressive Web App. <strong>PWA Manifest + Service Worker</strong> handle offline shell, push notifications, and installability — required per FR §7.1.
+          <span class="ipin ipin-setup" data-pin="pwa-setup">PWA Setup</span>
+        </div>
+
+        <div class="widget-grid" id="widgetGrid">
+          <!-- Hero / Welcome -->
+          <div class="widget w8 hero" draggable="true">
+            <span class="drag-handle">⋮⋮</span>
+            <div class="eyebrow" style="color: var(--tcf-orange); font-weight: 700; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase;">Mitchell Family Fund</div>
+            <h2>Your generosity in 2026</h2>
+            <p>You've granted $42,500 to 14 organizations this year, an 18% increase over 2025. Your favorite causes: Arts &amp; Culture, Workforce Development.</p>
+            <div class="hero-actions">
+              <button class="btn btn-accent" onclick="navigate('grants')">Recommend a Grant</button>
+              <button class="btn btn-ghost" onclick="navigate('contributions')">Add to Fund</button>
+            </div>
+          </div>
+
+          <!-- Balance widget -->
+          <div class="widget w4 card lift" draggable="true">
+            <span class="drag-handle">⋮⋮</span>
+            <div class="card-head">
+              <div>
+                <div class="stat-label">Total Fund Balance</div>
+                <div class="stat-value">$847,320</div>
+                <div class="stat-delta up">▲ $24,180 YTD (+2.9%)</div>
+              </div>
+              <span class="ipin ipin-integration" data-pin="ren-iphi-balance">Ren iPhi</span>
+            </div>
+            <div class="mini-chart">
+              <svg viewBox="0 0 200 60" width="100%" height="60" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="bgrad" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stop-color="#086C43" stop-opacity="0.35"/>
+                    <stop offset="100%" stop-color="#086C43" stop-opacity="0"/>
+                  </linearGradient>
+                </defs>
+                <path d="M0,45 L20,40 L40,42 L60,32 L80,35 L100,25 L120,28 L140,18 L160,22 L180,12 L200,15 L200,60 L0,60 Z" fill="url(#bgrad)"/>
+                <path d="M0,45 L20,40 L40,42 L60,32 L80,35 L100,25 L120,28 L140,18 L160,22 L180,12 L200,15" fill="none" stroke="#086C43" stroke-width="2"/>
+              </svg>
+            </div>
+          </div>
+
+          <!-- Recent grants widget -->
+          <div class="widget w6 card lift" draggable="true">
+            <span class="drag-handle">⋮⋮</span>
+            <div class="card-head">
+              <h3>Recent Grants</h3>
+              <span class="ipin ipin-integration" data-pin="ren-iphi-grants">Ren iPhi · Grants Read</span>
+            </div>
+            <table class="data">
+              <tr>
+                <td>
+                  <div class="recipient">
+                    <div class="org-mark">CO</div>
+                    <div>
+                      <div>Cleveland Orchestra</div>
+                      <div class="meta">May 12 · $5,000</div>
+                    </div>
+                  </div>
+                </td>
+                <td style="text-align:right;"><span class="badge badge-posted">Posted</span></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="recipient">
+                    <div class="org-mark alt-1">WD</div>
+                    <div>
+                      <div>WorkforceDev OH</div>
+                      <div class="meta">May 8 · $2,500</div>
+                    </div>
+                  </div>
+                </td>
+                <td style="text-align:right;"><span class="badge badge-approved">Approved</span></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="recipient">
+                    <div class="org-mark alt-2">FB</div>
+                    <div>
+                      <div>Greater Cleveland Food Bank</div>
+                      <div class="meta">May 4 · $3,000</div>
+                    </div>
+                  </div>
+                </td>
+                <td style="text-align:right;"><span class="badge badge-entered">Entered</span></td>
+              </tr>
+            </table>
+            <a href="#" onclick="navigate('grants'); return false;" style="font-size: 13px; font-weight: 600; margin-top: 10px; display: inline-block;">View all grants →</a>
+          </div>
+
+          <!-- Favorites widget -->
+          <div class="widget w6 card lift" draggable="true">
+            <span class="drag-handle">⋮⋮</span>
+            <div class="card-head">
+              <h3>Favorite Recipients</h3>
+              <span class="ipin ipin-config" data-pin="favorites-config">Portal DB</span>
+            </div>
+            <table class="data">
+              <tr>
+                <td>
+                  <div class="recipient">
+                    <div class="org-mark">CO</div>
+                    <div>Cleveland Orchestra</div>
+                  </div>
+                </td>
+                <td style="text-align:right;"><button class="btn btn-ghost btn-sm" onclick="addToCart('Cleveland Orchestra')">Grant</button></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="recipient">
+                    <div class="org-mark alt-2">FB</div>
+                    <div>Greater Cleveland Food Bank</div>
+                  </div>
+                </td>
+                <td style="text-align:right;"><button class="btn btn-ghost btn-sm" onclick="addToCart('Greater Cleveland Food Bank')">Grant</button></td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="recipient">
+                    <div class="org-mark alt-3">LC</div>
+                    <div>Literary Cleveland</div>
+                  </div>
+                </td>
+                <td style="text-align:right;"><button class="btn btn-ghost btn-sm" onclick="addToCart('Literary Cleveland')">Grant</button></td>
+              </tr>
+            </table>
+          </div>
+
+          <!-- News widget targeted by Impact Agenda -->
+          <div class="widget w8 card lift" draggable="true">
+            <span class="drag-handle">⋮⋮</span>
+            <div class="card-head">
+              <div>
+                <h3>For You: Stories &amp; Impact</h3>
+                <div style="font-size:12px; color:var(--ink-faint); margin-top:4px;">Personalized by your Impact Agenda interests: Arts &amp; Culture, Workforce Development</div>
+              </div>
+              <span class="ipin ipin-integration" data-pin="cms">Headless CMS</span>
+            </div>
+            <div class="story">
+              <div class="thumb t1"></div>
+              <div>
+                <div class="tag">Arts &amp; Culture</div>
+                <h4>How $50K Built a Free Music Program for 200 Kids</h4>
+                <div class="excerpt">The Foundation's Arts Mastery initiative is reaching neighborhoods that haven't seen sustained arts funding in a generation.</div>
+              </div>
+            </div>
+            <div class="story">
+              <div class="thumb t2"></div>
+              <div>
+                <div class="tag">Workforce Development</div>
+                <h4>2026 Skills Pipeline Report Released</h4>
+                <div class="excerpt">A new joint report on advanced-manufacturing reskilling in NE Ohio — featuring data on three programs your fund has supported.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Advisor card -->
+          <div class="widget w4 card lift" draggable="true">
+            <span class="drag-handle">⋮⋮</span>
+            <div class="card-head">
+              <h3>Your Advisor</h3>
+              <span class="ipin ipin-integration" data-pin="salesforce-advisor">Salesforce</span>
+            </div>
+            <div style="display: flex; gap: 14px; align-items: center; margin-bottom: 14px;">
+              <div class="avatar" style="width: 56px; height: 56px; background: var(--tcf-mid-green); color: #fff; font-size: 18px;">JR</div>
+              <div>
+                <div style="font-weight: 700; color: var(--tcf-primary);">Jordan Reyes</div>
+                <div style="font-size: 12px; color: var(--ink-faint);">Sr. Philanthropic Advisor</div>
+                <div style="font-size: 12px; color: var(--ink-faint);">15 years with TCF</div>
+              </div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="navigate('advisor')" style="width: 100%; justify-content: center;">Schedule a Call</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- =============================================================
+         VIEW: FUNDS
+         ============================================================= -->
+    <div class="view" id="view-funds">
+      <div class="page">
+        <div class="page-head">
+          <div>
+            <div class="eyebrow">My Funds</div>
+            <h1>Donor Advised Funds</h1>
+            <p class="lede">You advise 2 funds. Open a new DAF, manage existing ones, or set up beneficiaries.</p>
+          </div>
+          <div style="display:flex; gap: 8px;">
+            <span class="ipin ipin-integration" data-pin="ren-iphi-funds">Ren iPhi · Donor Lookup</span>
+            <button class="btn btn-accent">+ Open New DAF</button>
+          </div>
+        </div>
+
+        <div class="widget-grid">
+          <div class="widget w6 card">
+            <div class="card-head">
+              <div>
+                <div class="stat-label">Mitchell Family Fund</div>
+                <div class="stat-value" style="font-size:26px;">$612,440</div>
+                <div class="stat-delta up">▲ 3.1% YTD</div>
+              </div>
+              <span class="ipin ipin-integration" data-pin="ren-iphi-balance">Ren iPhi</span>
+            </div>
+            <div style="font-size:13px; color: var(--ink-soft); margin: 8px 0 14px;">
+              Established: March 2018 · Account type: Family DAF<br>
+              Joint Advisors: Eleanor Mitchell, David Mitchell
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-ghost btn-sm" onclick="navigate('performance')">Performance</button>
+              <button class="btn btn-ghost btn-sm" onclick="navigate('grants')">Recent Grants</button>
+              <button class="btn btn-ghost btn-sm">Statements</button>
+            </div>
+          </div>
+
+          <div class="widget w6 card">
+            <div class="card-head">
+              <div>
+                <div class="stat-label">Eleanor's Education Initiative</div>
+                <div class="stat-value" style="font-size:26px;">$234,880</div>
+                <div class="stat-delta up">▲ 2.4% YTD</div>
+              </div>
+              <span class="ipin ipin-integration" data-pin="ren-iphi-balance">Ren iPhi</span>
+            </div>
+            <div style="font-size:13px; color: var(--ink-soft); margin: 8px 0 14px;">
+              Established: November 2021 · Account type: Individual DAF<br>
+              Primary Advisor: Eleanor Mitchell
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-ghost btn-sm" onclick="navigate('performance')">Performance</button>
+              <button class="btn btn-ghost btn-sm" onclick="navigate('grants')">Recent Grants</button>
+              <button class="btn btn-ghost btn-sm">Statements</button>
+            </div>
+          </div>
+
+          <div class="widget w12 card">
+            <h3 style="margin-bottom:16px;">Open a New Donor Advised Fund</h3>
+            <p style="color: var(--ink-soft); margin-bottom: 16px; font-size: 14px;">A guided 5-step workflow: fund name &amp; type, advisor selection, beneficiaries, legal acknowledgements, initial contribution. Sub-flows trigger downstream workflows in Ren iPhi and Salesforce.</p>
+            <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 18px 0;">
+              <div style="padding:14px; background:var(--tcf-gray); border-radius:8px; font-size:13px;">
+                <div style="font-weight:700; color: var(--tcf-orange);">Step 1</div>
+                Fund details
+              </div>
+              <div style="padding:14px; background:var(--tcf-gray); border-radius:8px; font-size:13px;">
+                <div style="font-weight:700; color: var(--tcf-orange);">Step 2</div>
+                Advisors
+                <div><span class="ipin ipin-integration" data-pin="salesforce-advisor">Salesforce</span></div>
+              </div>
+              <div style="padding:14px; background:var(--tcf-gray); border-radius:8px; font-size:13px;">
+                <div style="font-weight:700; color: var(--tcf-orange);">Step 3</div>
+                Beneficiaries
+              </div>
+              <div style="padding:14px; background:var(--tcf-gray); border-radius:8px; font-size:13px;">
+                <div style="font-weight:700; color: var(--tcf-orange);">Step 4</div>
+                Legal
+                <div><span class="ipin ipin-config" data-pin="legal-config">CMS Doc</span></div>
+              </div>
+              <div style="padding:14px; background:var(--tcf-gray); border-radius:8px; font-size:13px;">
+                <div style="font-weight:700; color: var(--tcf-orange);">Step 5</div>
+                Initial gift
+                <div><span class="ipin ipin-integration" data-pin="psp">PSP</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- =============================================================
+         VIEW: CONTRIBUTIONS
+         ============================================================= -->
+    <div class="view" id="view-contributions">
+      <div class="page">
+        <div class="page-head">
+          <div>
+            <div class="eyebrow">Dollars In</div>
+            <h1>Contributions</h1>
+            <p class="lede">Make an additional contribution, manage recurring gifts, or update your payment methods.</p>
+          </div>
+          <span class="ipin ipin-integration" data-pin="psp">PSP Hosted Fields</span>
+        </div>
+
+        <div class="subtabs">
+          <button class="subtab active" onclick="switchSubtab(this, 'contrib-one')">One-time Gift</button>
+          <button class="subtab" onclick="switchSubtab(this, 'contrib-recurring')">Recurring Gifts</button>
+          <button class="subtab" onclick="switchSubtab(this, 'contrib-methods')">Payment Methods</button>
+          <button class="subtab" onclick="switchSubtab(this, 'contrib-history')">History</button>
+        </div>
+
+        <div class="widget-grid">
+          <div class="widget w8 card" id="contrib-one">
+            <h3 style="margin-bottom:18px;">Make an Additional Contribution</h3>
+            <div class="form-row">
+              <label>Contribute to</label>
+              <select>
+                <option>Mitchell Family Fund — $612,440</option>
+                <option>Eleanor's Education Initiative — $234,880</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label>Amount</label>
+              <input type="text" value="$1,000.00"/>
+              <div class="help-text">Minimum additional contribution: $250</div>
+            </div>
+            <div class="form-row">
+              <label>Payment Method <span class="ipin ipin-integration" data-pin="psp">PSP Vault</span></label>
+              <select>
+                <option>Chase Bank •••• 4471 (ACH)</option>
+                <option>Visa •••• 8821 (Credit Card)</option>
+                <option>+ Add new payment method</option>
+                <option>+ Link bank via PLAID (Phase 2)</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label>Investment Pool Allocation <span class="ipin ipin-config" data-pin="pool-allocation">Phase 2</span></label>
+              <select disabled>
+                <option>Default: per-fund policy</option>
+              </select>
+              <div class="help-text">Per-gift pool allocation coming in Phase 2 (FR-C-07).</div>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:10px;">
+              <button class="btn btn-accent" onclick="showToast('Contribution submitted. PSP webhook will confirm settlement, then Ren iPhi mutation creates TransactionID.')">Contribute $1,000</button>
+              <button class="btn btn-ghost">Cancel</button>
+              <span class="ipin ipin-security" data-pin="step-up">Step-up Auth</span>
+            </div>
+            <div class="pwa-note" style="margin-top:18px;">
+              Confirmations: an email receipt is sent automatically (FR-C-05). The PSP confirms settlement via webhook, then the BFF asynchronously creates a TransactionID in Ren iPhi with an idempotency key. <span class="ipin ipin-event" data-pin="contrib-event">ContributionInitiated → Settled</span>
+            </div>
+          </div>
+
+          <div class="widget w4 card">
+            <div class="card-head">
+              <h3>Tax Summary 2026</h3>
+              <span class="ipin ipin-integration" data-pin="ren-iphi-tax">Ren iPhi</span>
+            </div>
+            <div class="stat-label">Year-to-date contributions</div>
+            <div class="stat-value">$12,500</div>
+            <div style="font-size: 13px; color: var(--ink-soft); margin-top: 12px;">
+              All contributions to your DAF are tax-deductible at the time of gift. Tax receipts are issued per contribution.
+            </div>
+            <a href="#" style="font-size: 13px; font-weight: 600; margin-top: 12px; display: inline-block;">Download tax letter →</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- =============================================================
+         VIEW: GRANTS
+         ============================================================= -->
+    <div class="view" id="view-grants">
+      <div class="page">
+        <div class="page-head">
+          <div>
+            <div class="eyebrow">Dollars Out</div>
+            <h1>Grant Recommendations</h1>
+            <p class="lede">Recommend grants to 501(c)(3) organizations. Add multiple to your cart and submit as a batch — one receipt per submission.</p>
+          </div>
+          <div style="display:flex; gap: 8px; align-items: center;">
+            <span class="ipin ipin-integration" data-pin="candid">Candid 501(c)(3)</span>
+            <button class="btn btn-accent" onclick="toggleCart()">View Cart (<span id="cartCountBtn">3</span>)</button>
+          </div>
+        </div>
+
+        <div class="subtabs">
+          <button class="subtab active" onclick="switchSubtab(this, 'grant-new')">Recommend a Grant</button>
+          <button class="subtab" onclick="switchSubtab(this, 'grant-history')">History &amp; Status</button>
+          <button class="subtab" onclick="switchSubtab(this, 'grant-favorites')">Favorites</button>
+        </div>
+
+        <div class="widget-grid" id="grant-new">
+          <div class="widget w8 card">
+            <h3 style="margin-bottom: 6px;">Recommend a Grant</h3>
+            <p style="font-size: 13px; color: var(--ink-faint); margin-bottom: 18px;">Searches both the Foundation's known recipients (Ren iPhi) and the Candid 501(c)(3) universe.</p>
+
+            <div class="form-row">
+              <label>Granting Fund</label>
+              <select><option>Mitchell Family Fund</option><option>Eleanor's Education Initiative</option></select>
+            </div>
+
+            <div class="form-row">
+              <label>Search Recipient <span class="ipin ipin-integration" data-pin="candid">Candid</span></label>
+              <input type="text" placeholder="Search by name, EIN, or city — e.g., Cleveland Public Library" id="recipientSearch"/>
+              <div class="help-text">First checks favorites, then Foundation database, then Candid universe (2.3M nonprofits).</div>
+            </div>
+
+            <div class="form-row">
+              <label>Amount</label>
+              <input type="text" value="$1,000.00"/>
+            </div>
+
+            <h4 style="font-family: var(--font-head); color: var(--tcf-primary); font-size: 15px; margin: 24px 0 8px;">Grant Letter Information <span class="ipin ipin-config" data-pin="picklist-config">Admin Pick List</span></h4>
+            <p style="font-size: 12px; color: var(--ink-faint); margin-bottom: 12px;">Configurable pick list managed by Foundation administrators.</p>
+
+            <div class="form-row">
+              <label>Grant Purpose</label>
+              <select>
+                <option>General Operating Support</option>
+                <option>Program-specific</option>
+                <option>Capital Campaign</option>
+                <option>Endowment</option>
+                <option>Scholarship</option>
+              </select>
+            </div>
+
+            <div class="form-row">
+              <label>Recognition</label>
+              <select>
+                <option>Use my name (Eleanor Mitchell)</option>
+                <option>Anonymous</option>
+                <option>In honor of...</option>
+                <option>In memory of...</option>
+              </select>
+            </div>
+
+            <div class="form-row">
+              <label>Special Restrictions / Notes</label>
+              <textarea rows="3" placeholder="Optional. e.g., 'To support youth programming, summer 2026'"></textarea>
+            </div>
+
+            <div style="display:flex; gap:10px; margin-top:18px;">
+              <button class="btn btn-primary" onclick="addToCart('Cleveland Public Library', 1000)">+ Add to Cart</button>
+              <button class="btn btn-ghost">Save as Favorite</button>
+            </div>
+          </div>
+
+          <div class="widget w4 card">
+            <h3 style="margin-bottom:14px;">Grant Submission Workflow</h3>
+            <p style="font-size:13px; color: var(--ink-soft); margin-bottom: 14px;">After cart submission, each grant follows three stages:</p>
+            <div class="status-pipeline" style="flex-direction:column; gap:8px;">
+              <div style="background: var(--tcf-orange); color:#fff; padding: 10px 14px; border-radius: 8px; width:100%;">
+                <div style="font-weight:700; font-size:13px;">1. Entered</div>
+                <div style="font-size:12px; opacity:0.9;">Posted to Ren iPhi · TransactionID + DistributionID created</div>
+              </div>
+              <div style="background: var(--tcf-blue); color:#fff; padding: 10px 14px; border-radius: 8px; width:100%;">
+                <div style="font-weight:700; font-size:13px;">2. Approved</div>
+                <div style="font-size:12px; opacity:0.9;">Foundation back-office review complete</div>
+              </div>
+              <div style="background: var(--tcf-mid-green); color:#fff; padding: 10px 14px; border-radius: 8px; width:100%;">
+                <div style="font-weight:700; font-size:13px;">3. Posted ✓</div>
+                <div style="font-size:12px; opacity:0.9;">Funds disbursed to recipient · You're notified</div>
+              </div>
+            </div>
+            <span class="ipin ipin-event" data-pin="grant-event" style="margin-top:14px;">Event-driven status sync</span>
+          </div>
+        </div>
+
+        <div class="card" id="grant-history" style="display:none;">
+          <div class="card-head">
+            <h3>Grant History</h3>
+            <span class="ipin ipin-integration" data-pin="ren-iphi-grants">Ren iPhi · Status Sync</span>
+          </div>
+          <table class="data">
+            <thead>
+              <tr>
+                <th>Recipient</th>
+                <th>Fund</th>
+                <th>Amount</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th>Ren iPhi IDs</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><div class="recipient"><div class="org-mark">CO</div>Cleveland Orchestra</div></td>
+                <td>Mitchell Family Fund</td>
+                <td><b>$5,000</b></td>
+                <td>May 12, 2026</td>
+                <td><span class="badge badge-posted">Posted</span></td>
+                <td><span class="mono">T-4429019 / D-880124</span></td>
+              </tr>
+              <tr>
+                <td><div class="recipient"><div class="org-mark alt-1">WD</div>WorkforceDev OH</div></td>
+                <td>Eleanor's Ed Initiative</td>
+                <td><b>$2,500</b></td>
+                <td>May 8, 2026</td>
+                <td><span class="badge badge-approved">Approved</span></td>
+                <td><span class="mono">T-4428991 / D-880108</span></td>
+              </tr>
+              <tr>
+                <td><div class="recipient"><div class="org-mark alt-2">FB</div>Greater Cleveland Food Bank</div></td>
+                <td>Mitchell Family Fund</td>
+                <td><b>$3,000</b></td>
+                <td>May 4, 2026</td>
+                <td><span class="badge badge-entered">Entered</span></td>
+                <td><span class="mono">T-4428765 / D-880092</span></td>
+              </tr>
+              <tr>
+                <td><div class="recipient"><div class="org-mark alt-3">LC</div>Literary Cleveland</div></td>
+                <td>Mitchell Family Fund</td>
+                <td><b>$1,500</b></td>
+                <td>Apr 22, 2026</td>
+                <td><span class="badge badge-posted">Posted</span></td>
+                <td><span class="mono">T-4427411 / D-879883</span></td>
+              </tr>
+              <tr>
+                <td><div class="recipient"><div class="org-mark alt-4">RA</div>Rainey Institute</div></td>
+                <td>Eleanor's Ed Initiative</td>
+                <td><b>$2,000</b></td>
+                <td>Apr 15, 2026</td>
+                <td><span class="badge badge-posted">Posted</span></td>
+                <td><span class="mono">T-4427228 / D-879811</span></td>
+              </tr>
+            </tbody>
+          </table>
+          <div style="margin-top: 14px; font-size: 12px; color: var(--ink-faint);">
+            Statuses sync from Ren iPhi via webhook (preferred) or scheduled poll. Each grant carries both TransactionID (FR-G-10) and DistributionID (FR-G-11).
+          </div>
+        </div>
+
+        <div class="card" id="grant-favorites" style="display:none;">
+          <div class="card-head">
+            <h3>Favorite Recipients</h3>
+            <span class="ipin ipin-config" data-pin="favorites-config">Portal DB</span>
+          </div>
+          <table class="data">
+            <tbody>
+              <tr><td><div class="recipient"><div class="org-mark">CO</div>Cleveland Orchestra<div class="meta">11214 Euclid Ave · EIN 34-0714595</div></div></td><td style="text-align:right;"><button class="btn btn-ghost btn-sm" onclick="addToCart('Cleveland Orchestra')">+ Cart</button></td></tr>
+              <tr><td><div class="recipient"><div class="org-mark alt-2">FB</div>Greater Cleveland Food Bank<div class="meta">15500 South Waterloo · EIN 34-1135448</div></div></td><td style="text-align:right;"><button class="btn btn-ghost btn-sm" onclick="addToCart('Greater Cleveland Food Bank')">+ Cart</button></td></tr>
+              <tr><td><div class="recipient"><div class="org-mark alt-3">LC</div>Literary Cleveland<div class="meta">3000 Bridge Ave · EIN 47-2298870</div></div></td><td style="text-align:right;"><button class="btn btn-ghost btn-sm" onclick="addToCart('Literary Cleveland')">+ Cart</button></td></tr>
+              <tr><td><div class="recipient"><div class="org-mark alt-4">RA</div>Rainey Institute<div class="meta">1705 E 55th St · EIN 34-1037529</div></div></td><td style="text-align:right;"><button class="btn btn-ghost btn-sm" onclick="addToCart('Rainey Institute')">+ Cart</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- =============================================================
+         VIEW: PERFORMANCE
+         ============================================================= -->
+    <div class="view" id="view-performance">
+      <div class="page">
+        <div class="page-head">
+          <div>
+            <div class="eyebrow">Investments</div>
+            <h1>Fund Performance</h1>
+            <p class="lede">Track and trend account performance. Download statements for any period.</p>
+          </div>
+          <span class="ipin ipin-integration" data-pin="ren-iphi-perf">Ren iPhi · Performance Read</span>
+        </div>
+
+        <div class="widget-grid">
+          <div class="widget w12 card">
+            <div class="card-head">
+              <div>
+                <h3>Mitchell Family Fund</h3>
+                <div style="font-size: 13px; color: var(--ink-faint);">Total return, last 12 months</div>
+              </div>
+              <div style="display:flex; gap:6px;">
+                <button class="btn btn-ghost btn-sm">1M</button>
+                <button class="btn btn-ghost btn-sm">3M</button>
+                <button class="btn btn-ghost btn-sm">YTD</button>
+                <button class="btn btn-primary btn-sm">1Y</button>
+                <button class="btn btn-ghost btn-sm">All</button>
+              </div>
+            </div>
+            <div style="display:flex; gap: 36px; margin-bottom: 16px;">
+              <div>
+                <div class="stat-label">Current Balance</div>
+                <div class="stat-value">$612,440</div>
+              </div>
+              <div>
+                <div class="stat-label">12-month Return</div>
+                <div class="stat-value" style="color: var(--tcf-mid-green);">+8.4%</div>
+              </div>
+              <div>
+                <div class="stat-label">Contributions YTD</div>
+                <div class="stat-value">$12,500</div>
+              </div>
+              <div>
+                <div class="stat-label">Grants YTD</div>
+                <div class="stat-value">$42,500</div>
+              </div>
+            </div>
+            <svg class="perf-chart" viewBox="0 0 800 240" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="pgrad" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stop-color="#086C43" stop-opacity="0.25"/>
+                  <stop offset="100%" stop-color="#086C43" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <!-- Grid lines -->
+              <line x1="0" y1="40" x2="800" y2="40" stroke="#E5E1DA"/>
+              <line x1="0" y1="100" x2="800" y2="100" stroke="#E5E1DA"/>
+              <line x1="0" y1="160" x2="800" y2="160" stroke="#E5E1DA"/>
+              <line x1="0" y1="220" x2="800" y2="220" stroke="#E5E1DA"/>
+              <!-- Y labels -->
+              <text x="6" y="36" font-size="11" fill="#8A968F">$650K</text>
+              <text x="6" y="96" font-size="11" fill="#8A968F">$600K</text>
+              <text x="6" y="156" font-size="11" fill="#8A968F">$550K</text>
+              <text x="6" y="216" font-size="11" fill="#8A968F">$500K</text>
+              <!-- Path -->
+              <path d="M0,170 C80,165 120,155 200,140 C260,130 300,150 360,135 C420,125 470,110 530,90 C580,75 640,80 700,55 C740,40 770,45 800,30 L800,240 L0,240 Z" fill="url(#pgrad)"/>
+              <path d="M0,170 C80,165 120,155 200,140 C260,130 300,150 360,135 C420,125 470,110 530,90 C580,75 640,80 700,55 C740,40 770,45 800,30" fill="none" stroke="#086C43" stroke-width="2.5"/>
+              <!-- X labels -->
+              <text x="0" y="238" font-size="11" fill="#8A968F">Jun</text>
+              <text x="135" y="238" font-size="11" fill="#8A968F">Sep</text>
+              <text x="270" y="238" font-size="11" fill="#8A968F">Dec</text>
+              <text x="405" y="238" font-size="11" fill="#8A968F">Feb</text>
+              <text x="540" y="238" font-size="11" fill="#8A968F">Mar</text>
+              <text x="775" y="238" font-size="11" fill="#8A968F" text-anchor="end">May</text>
+            </svg>
+          </div>
+
+          <div class="widget w6 card">
+            <div class="card-head">
+              <h3>Allocation</h3>
+              <span class="ipin ipin-integration" data-pin="ren-iphi-pool">Ren iPhi · Pools</span>
+            </div>
+            <div style="display:flex; gap:14px; align-items:center;">
+              <svg width="140" height="140" viewBox="0 0 100 100" style="flex-shrink:0;">
+                <circle r="40" cx="50" cy="50" fill="none" stroke="#164430" stroke-width="20" stroke-dasharray="138 251" />
+                <circle r="40" cx="50" cy="50" fill="none" stroke="#086C43" stroke-width="20" stroke-dasharray="63 251" stroke-dashoffset="-138" />
+                <circle r="40" cx="50" cy="50" fill="none" stroke="#19B9A9" stroke-width="20" stroke-dasharray="38 251" stroke-dashoffset="-201" />
+                <circle r="40" cx="50" cy="50" fill="none" stroke="#1A8DA9" stroke-width="20" stroke-dasharray="12 251" stroke-dashoffset="-239" />
+              </svg>
+              <div style="font-size: 14px; line-height: 1.9;">
+                <div><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#164430;margin-right:8px;"></span>Growth Pool — 55%</div>
+                <div><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#086C43;margin-right:8px;"></span>Balanced — 25%</div>
+                <div><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#19B9A9;margin-right:8px;"></span>Conservative — 15%</div>
+                <div><span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#1A8DA9;margin-right:8px;"></span>Cash — 5%</div>
+              </div>
+            </div>
+            <button class="btn btn-ghost btn-sm" style="margin-top: 14px;">Request Rebalancing <span class="ipin ipin-config" data-pin="rebalance-config">Phase 2</span></button>
+          </div>
+
+          <div class="widget w6 card">
+            <div class="card-head">
+              <h3>Statements</h3>
+              <span class="ipin ipin-integration" data-pin="statements">Object Storage</span>
+            </div>
+            <table class="data">
+              <tr><td>Q1 2026 Statement</td><td>Mar 31, 2026</td><td style="text-align:right;"><button class="btn btn-ghost btn-sm">PDF</button></td></tr>
+              <tr><td>Q4 2025 Statement</td><td>Dec 31, 2025</td><td style="text-align:right;"><button class="btn btn-ghost btn-sm">PDF</button></td></tr>
+              <tr><td>Q3 2025 Statement</td><td>Sep 30, 2025</td><td style="text-align:right;"><button class="btn btn-ghost btn-sm">PDF</button></td></tr>
+              <tr><td>2025 Annual Statement</td><td>Dec 31, 2025</td><td style="text-align:right;"><button class="btn btn-ghost btn-sm">PDF</button></td></tr>
+            </table>
+            <div style="font-size:12px; color: var(--ink-faint); margin-top:10px;">Signed URLs from object storage with 5-minute expiration.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- =============================================================
+         VIEW: IMPACT
+         ============================================================= -->
+    <div class="view" id="view-impact">
+      <div class="page">
+        <div class="page-head">
+          <div>
+            <div class="eyebrow">Stories</div>
+            <h1>Impact &amp; Learning</h1>
+            <p class="lede">News, stories, and learning tracks personalized to your Impact Agenda interests.</p>
+          </div>
+          <span class="ipin ipin-integration" data-pin="cms">Headless CMS</span>
+        </div>
+
+        <div class="widget-grid">
+          <div class="widget w8 card">
+            <h3 style="margin-bottom:14px;">Recent Stories</h3>
+            <div class="story">
+              <div class="thumb t1"></div>
+              <div>
+                <div class="tag">Arts &amp; Culture · 5 min read</div>
+                <h4>How $50K Built a Free Music Program for 200 Kids</h4>
+                <div class="excerpt">The Arts Mastery initiative is reaching neighborhoods that haven't seen sustained arts funding in a generation.</div>
+              </div>
+            </div>
+            <div class="story">
+              <div class="thumb t2"></div>
+              <div>
+                <div class="tag">Workforce Development · 8 min read</div>
+                <h4>2026 Skills Pipeline Report Released</h4>
+                <div class="excerpt">Data on three programs your fund has supported, with stories from current apprentices and their employers.</div>
+              </div>
+            </div>
+            <div class="story">
+              <div class="thumb t3"></div>
+              <div>
+                <div class="tag">Community Health · 4 min read</div>
+                <h4>Doula Network Expands to West Side Neighborhoods</h4>
+                <div class="excerpt">Five new community-based doulas joined the program this spring, supported by Foundation grant-making.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="widget w4 card">
+            <h3 style="margin-bottom: 8px;">Learning Tracks <span class="ipin ipin-config" data-pin="learning-config">Phase 2</span></h3>
+            <p style="font-size: 13px; color: var(--ink-soft); margin-bottom: 14px;">Self-paced learning curated for donors.</p>
+            <div style="background: var(--surface-2); border-radius: 8px; padding: 14px; margin-bottom: 10px;">
+              <div style="font-weight: 700; color: var(--tcf-primary); margin-bottom: 4px;">Estate Planning Essentials</div>
+              <div style="font-size: 12px; color: var(--ink-faint);">5 articles · ~25 min</div>
+            </div>
+            <div style="background: var(--surface-2); border-radius: 8px; padding: 14px; margin-bottom: 10px;">
+              <div style="font-weight: 700; color: var(--tcf-primary); margin-bottom: 4px;">Bunching &amp; Tax Strategy</div>
+              <div style="font-size: 12px; color: var(--ink-faint);">3 articles · ~12 min</div>
+            </div>
+            <div style="background: var(--surface-2); border-radius: 8px; padding: 14px;">
+              <div style="font-weight: 700; color: var(--tcf-primary); margin-bottom: 4px;">Multi-Generational Giving</div>
+              <div style="font-size: 12px; color: var(--ink-faint);">7 articles + workbook · ~45 min</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- =============================================================
+         VIEW: ADVISOR
+         ============================================================= -->
+    <div class="view" id="view-advisor">
+      <div class="page">
+        <div class="page-head">
+          <div>
+            <div class="eyebrow">Support</div>
+            <h1>Contact Your Philanthropic Advisor</h1>
+            <p class="lede">Your dedicated advisor at the Foundation can help you plan, strategize, and connect with causes.</p>
+          </div>
+          <span class="ipin ipin-integration" data-pin="salesforce-advisor">Salesforce · Advisor</span>
+        </div>
+
+        <div class="widget-grid">
+          <div class="widget w6 card">
+            <div style="display:flex; gap: 18px; align-items: center; margin-bottom: 20px;">
+              <div class="avatar" style="width: 80px; height: 80px; background: var(--tcf-mid-green); color: #fff; font-size: 26px;">JR</div>
+              <div>
+                <h3 style="font-size: 20px; margin-bottom: 4px;">Jordan Reyes</h3>
+                <div style="color: var(--ink-soft); font-size: 14px;">Sr. Philanthropic Advisor</div>
+                <div style="color: var(--ink-faint); font-size: 13px;">15 years with The Cleveland Foundation</div>
+              </div>
+            </div>
+            <p style="color: var(--ink-soft); font-size: 14px; margin-bottom: 16px;">Jordan supports families with multi-generational giving plans and complex contribution strategies. They focus on workforce, arts, and education sectors.</p>
+            <div style="display:flex; gap: 8px;">
+              <button class="btn btn-primary" onclick="showToast('Message draft saved. Salesforce Activity created.')">Send Message</button>
+              <button class="btn btn-ghost">Schedule Call</button>
+              <button class="btn btn-ghost">Request a Meeting</button>
+            </div>
+          </div>
+
+          <div class="widget w6 card">
+            <h3 style="margin-bottom: 14px;">Recent Conversations</h3>
+            <div style="border-left: 3px solid var(--tcf-orange); padding: 8px 14px; margin-bottom: 12px;">
+              <div style="font-size: 12px; color: var(--ink-faint); margin-bottom: 4px;">Apr 28, 2026 · Phone call · 45 min</div>
+              <div style="font-weight: 600; color: var(--tcf-primary);">Discussed 2026 grant strategy and youth arts focus</div>
+            </div>
+            <div style="border-left: 3px solid var(--tcf-mid-green); padding: 8px 14px; margin-bottom: 12px;">
+              <div style="font-size: 12px; color: var(--ink-faint); margin-bottom: 4px;">Mar 14, 2026 · Email exchange</div>
+              <div style="font-weight: 600; color: var(--tcf-primary);">Tax letter clarification — Q1 contributions</div>
+            </div>
+            <div style="border-left: 3px solid var(--tcf-blue); padding: 8px 14px;">
+              <div style="font-size: 12px; color: var(--ink-faint); margin-bottom: 4px;">Feb 02, 2026 · In-person meeting</div>
+              <div style="font-weight: 600; color: var(--tcf-primary);">Annual review &amp; family planning session</div>
+            </div>
+            <div style="font-size:12px; color: var(--ink-faint); margin-top:14px;">Interaction history syncs from Salesforce.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- =============================================================
+         VIEW: FAMILY ACCESS (multi-user invites)
+         ============================================================= -->
+    <div class="view" id="view-family">
+      <div class="page">
+        <div class="page-head">
+          <div>
+            <div class="eyebrow">Multi-User Access</div>
+            <h1>Family &amp; Joint Access</h1>
+            <p class="lede">Invite family members, joint advisors, or successors to access your DAFs with scoped permissions.</p>
+          </div>
+          <button class="btn btn-accent">+ Invite Someone</button>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>People with Access</h3>
+            <span class="ipin ipin-security" data-pin="rbac">Role-based Access</span>
+          </div>
+
+          <div class="invitee-row">
+            <div class="avatar" style="background: var(--tcf-aqua); color: var(--tcf-primary);">EM</div>
+            <div style="flex:1;">
+              <div style="font-weight: 700;">Eleanor Mitchell <span style="font-weight: 400; color: var(--ink-faint); font-size: 12px;">(you)</span></div>
+              <div style="font-size: 12.5px; color: var(--ink-faint);">eleanor.m@example.com · MFA Enrolled</div>
+            </div>
+            <span class="badge badge-posted">Primary Advisor</span>
+            <span class="ipin ipin-integration" data-pin="idp">IdP</span>
+          </div>
+
+          <div class="invitee-row">
+            <div class="avatar" style="background: var(--tcf-blue); color: #fff;">DM</div>
+            <div style="flex:1;">
+              <div style="font-weight: 700;">David Mitchell</div>
+              <div style="font-size: 12.5px; color: var(--ink-faint);">david.m@example.com · MFA Enrolled</div>
+            </div>
+            <span class="badge badge-approved">Joint Advisor</span>
+            <button class="btn btn-ghost btn-sm">Manage</button>
+          </div>
+
+          <div class="invitee-row">
+            <div class="avatar" style="background: var(--tcf-pink); color: #fff;">SM</div>
+            <div style="flex:1;">
+              <div style="font-weight: 700;">Sarah Mitchell-Chen</div>
+              <div style="font-size: 12.5px; color: var(--ink-faint);">sarah.mc@example.com · View &amp; Recommend</div>
+            </div>
+            <span class="badge badge-approved">Family Invitee</span>
+            <button class="btn btn-ghost btn-sm">Manage</button>
+          </div>
+
+          <div class="invitee-row">
+            <div class="avatar" style="background: var(--tcf-light-orange); color: var(--tcf-primary);">MM</div>
+            <div style="flex:1;">
+              <div style="font-weight: 700;">Marcus Mitchell</div>
+              <div style="font-size: 12.5px; color: var(--ink-faint);">marcus.m@example.com · Awaiting acceptance</div>
+            </div>
+            <span class="badge badge-pending">Invitation Sent</span>
+            <button class="btn btn-ghost btn-sm">Resend</button>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top: 24px;">
+          <h3 style="margin-bottom: 14px;">Invitation Workflow</h3>
+          <ol style="padding-left: 20px; color: var(--ink-soft); line-height: 1.8;">
+            <li>Primary advisor sends invitation specifying email, role, and capability level</li>
+            <li>Single-use, time-bound link emailed to invitee <span class="ipin ipin-integration" data-pin="email">Transactional Email</span></li>
+            <li>Invitee completes identity verification and enrolls in MFA <span class="ipin ipin-security" data-pin="mfa">MFA Enrollment</span></li>
+            <li>Scoped access granted; all actions independently logged to audit trail <span class="ipin ipin-config" data-pin="audit">Audit Log</span></li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- =============================================================
+         VIEW: SETTINGS
+         ============================================================= -->
+    <div class="view" id="view-settings">
+      <div class="page">
+        <div class="page-head">
+          <div>
+            <div class="eyebrow">Account</div>
+            <h1>Settings &amp; Security</h1>
+            <p class="lede">Profile, communication preferences, security, and integrations.</p>
+          </div>
+          <span class="ipin ipin-integration" data-pin="salesforce-sync">Salesforce Sync</span>
+        </div>
+
+        <div class="widget-grid">
+          <div class="widget w6 card">
+            <h3 style="margin-bottom: 16px;">Profile</h3>
+            <div class="form-row">
+              <label>Full Name</label>
+              <input type="text" value="Eleanor Mitchell"/>
+            </div>
+            <div class="form-row">
+              <label>Email <span class="ipin ipin-security" data-pin="step-up">Step-up to Change</span></label>
+              <input type="email" value="eleanor.m@example.com"/>
+            </div>
+            <div class="form-row">
+              <label>Phone</label>
+              <input type="tel" value="(216) 555-0142"/>
+            </div>
+            <div class="form-row">
+              <label>PartyID <span class="ipin ipin-config" data-pin="partyid">Reconciliation Key</span></label>
+              <input type="text" value="P-2849156" readonly style="background:var(--surface-2);"/>
+              <div class="help-text">Links your Salesforce contact to your Ren iPhi donor record.</div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="showToast('Profile updated. Syncing to Salesforce…')">Save</button>
+          </div>
+
+          <div class="widget w6 card">
+            <h3 style="margin-bottom: 16px;">Security</h3>
+            <div style="padding: 14px; background: var(--surface-2); border-radius: 8px; margin-bottom: 12px;">
+              <div style="font-weight: 700; color: var(--tcf-mid-green); display: flex; align-items: center; gap: 6px;">✓ Multi-Factor Authentication Enabled</div>
+              <div style="font-size: 13px; color: var(--ink-faint); margin-top: 4px;">Method: TOTP app (Microsoft Authenticator)</div>
+            </div>
+            <div style="display:flex; gap:8px; margin-bottom: 18px;">
+              <button class="btn btn-ghost btn-sm">Add Method</button>
+              <button class="btn btn-ghost btn-sm">View Recovery Codes</button>
+            </div>
+
+            <h4 style="font-family: var(--font-head); color: var(--tcf-primary); font-size: 15px; margin-bottom: 10px;">Recent Sign-Ins</h4>
+            <div style="font-size: 13px; line-height: 2;">
+              <div>📍 May 28, 11:42 AM · Cleveland, OH · Chrome on macOS <span style="color:var(--tcf-mid-green);">(current)</span></div>
+              <div>📍 May 27, 8:15 PM · Cleveland, OH · Safari on iOS</div>
+              <div>📍 May 26, 9:30 AM · Cleveland, OH · Chrome on macOS</div>
+            </div>
+            <span class="ipin ipin-config" data-pin="audit" style="margin-top:14px;">Audit Log</span>
+          </div>
+
+          <div class="widget w6 card">
+            <div class="card-head">
+              <h3>Communication Preferences</h3>
+              <span class="ipin ipin-integration" data-pin="salesforce-sync">Salesforce</span>
+            </div>
+            <div style="display:flex; flex-direction:column; gap: 10px;">
+              <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+                <input type="checkbox" checked /> Email me when a grant reaches <b>Posted</b> status
+              </label>
+              <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+                <input type="checkbox" checked /> Send me contribution receipts via email
+              </label>
+              <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+                <input type="checkbox" /> Push notifications on mobile (PWA)
+              </label>
+              <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+                <input type="checkbox" checked /> Monthly stories from causes I care about
+              </label>
+              <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+                <input type="checkbox" /> Quarterly Foundation newsletter
+              </label>
+            </div>
+            <div class="help-text" style="margin-top:14px;">Preferences sync to Salesforce within 5 minutes (FR-P-04).</div>
+          </div>
+
+          <div class="widget w6 card">
+            <h3 style="margin-bottom: 16px;">Connected Accounts</h3>
+            <div class="invitee-row" style="padding: 12px 0;">
+              <div style="width:32px;height:32px;border-radius:8px;background:#0072CE;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;">P</div>
+              <div style="flex:1;">
+                <div style="font-weight: 700;">PLAID Bank Linking</div>
+                <div style="font-size: 12.5px; color: var(--ink-faint);">Phase 2 — Coming Soon</div>
+              </div>
+              <button class="btn btn-ghost btn-sm" disabled>Connect</button>
+              <span class="ipin ipin-integration" data-pin="plaid">PLAID</span>
+            </div>
+            <div class="invitee-row" style="padding: 12px 0;">
+              <div style="width:32px;height:32px;border-radius:8px;background:#5096F7;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;">E</div>
+              <div style="flex:1;">
+                <div style="font-weight: 700;">Envestnet / Orion</div>
+                <div style="font-size: 12.5px; color: var(--ink-faint);">Phase 3 — Wealth Platform Integration</div>
+              </div>
+              <button class="btn btn-ghost btn-sm" disabled>Connect</button>
+              <span class="ipin ipin-integration" data-pin="wealth">Wealth</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- =============================================================
+         VIEW: ARCHITECTURE MAP (visual map of integrations)
+         ============================================================= -->
+    <div class="view" id="view-architecture">
+      <div class="page">
+        <div class="page-head">
+          <div>
+            <div class="eyebrow">For Developers &amp; Architects</div>
+            <h1>System Architecture Map</h1>
+            <p class="lede">Layered, cloud-native system. Each box represents a component, integration, or configuration point referenced throughout this prototype. This view exists for the build team.</p>
+          </div>
+        </div>
+
+        <div class="arch-diagram">
+          <div class="arch-layer-label">Edge Layer</div>
+          <div class="arch-layer">
+            <div class="arch-box edge"><div class="box-title">CDN + DNS</div><div class="box-desc">Global routing, TLS termination</div></div>
+            <div class="arch-box edge"><div class="box-title">WAF</div><div class="box-desc">OWASP Core Rule Set + GraphQL-specific rules</div></div>
+            <div class="arch-box edge"><div class="box-title">Bot Management</div><div class="box-desc">Credential stuffing prevention</div></div>
+          </div>
+
+          <div class="arch-layer-label" style="margin-top:18px;">Presentation (PWA)</div>
+          <div class="arch-layer">
+            <div class="arch-box presentation"><div class="box-title">React + Next.js</div><div class="box-desc">Mobile-first PWA shell</div></div>
+            <div class="arch-box presentation"><div class="box-title">Service Worker</div><div class="box-desc">Offline shell, push notifications, cart persistence</div></div>
+            <div class="arch-box presentation"><div class="box-title">Design System</div><div class="box-desc">TCF brand tokens, widget contract</div></div>
+          </div>
+
+          <div class="arch-layer-label" style="margin-top:18px;">Backend-for-Frontend (BFF)</div>
+          <div class="arch-layer">
+            <div class="arch-box bff"><div class="box-title">GraphQL Server</div><div class="box-desc">Node.js/TypeScript · Apollo or Yoga · Donor-curated schema</div></div>
+            <div class="arch-box bff"><div class="box-title">Auth/Authz</div><div class="box-desc">Token validation, per-resolver scoping, persisted queries</div></div>
+            <div class="arch-box bff"><div class="box-title">DataLoader</div><div class="box-desc">Batch + dedupe downstream calls</div></div>
+          </div>
+
+          <div class="arch-layer-label" style="margin-top:18px;">Integration Layer</div>
+          <div class="arch-layer">
+            <div class="arch-box integration"><div class="box-title">Ren iPhi GraphQL Client</div><div class="box-desc">Funds, balances, TransactionID, DistributionID · Circuit breaker</div></div>
+            <div class="arch-box integration"><div class="box-title">Salesforce Client</div><div class="box-desc">REST + Platform Events · Bi-directional sync</div></div>
+            <div class="arch-box integration"><div class="box-title">Candid Client</div><div class="box-desc">501(c)(3) lookups · Heavy cache</div></div>
+            <div class="arch-box integration"><div class="box-title">PSP Client</div><div class="box-desc">Hosted fields + webhooks · Tokens only</div></div>
+            <div class="arch-box integration"><div class="box-title">PLAID Client (Phase 2)</div><div class="box-desc">Bank linking + transaction sync</div></div>
+            <div class="arch-box integration"><div class="box-title">Email/SMS</div><div class="box-desc">Batch receipts, Posted notifications</div></div>
+          </div>
+
+          <div class="arch-layer-label" style="margin-top:18px;">Workflow &amp; Eventing</div>
+          <div class="arch-layer">
+            <div class="arch-box workflow"><div class="box-title">Event Bus</div><div class="box-desc">Service Bus / EventBridge · Domain events</div></div>
+            <div class="arch-box workflow"><div class="box-title">Durable Workflow</div><div class="box-desc">Temporal / Step Functions · Grant batch processing</div></div>
+            <div class="arch-box workflow"><div class="box-title">Notification Service</div><div class="box-desc">Batch receipt fan-out, Posted alerts</div></div>
+            <div class="arch-box workflow"><div class="box-title">Status Reconciler</div><div class="box-desc">Webhook listener / poller for grant status</div></div>
+          </div>
+
+          <div class="arch-layer-label" style="margin-top:18px;">Data &amp; Cache</div>
+          <div class="arch-layer">
+            <div class="arch-box data"><div class="box-title">Managed Redis</div><div class="box-desc">Sessions, query cache, idempotency, cart, rate limits</div></div>
+            <div class="arch-box data"><div class="box-title">Managed Postgres</div><div class="box-desc">Intents, favorites, layouts, audit log, invitations</div></div>
+            <div class="arch-box data"><div class="box-title">Object Storage</div><div class="box-desc">Statement PDFs · Signed URLs</div></div>
+            <div class="arch-box data"><div class="box-title">Headless CMS</div><div class="box-desc">Contentful/Sanity · News, stories, learning</div></div>
+          </div>
+        </div>
+
+        <h2 style="margin: 36px 0 16px;">Integration &amp; Configuration Inventory</h2>
+        <div class="card">
+          <table class="data">
+            <thead>
+              <tr>
+                <th>System / Surface</th>
+                <th>Type</th>
+                <th>Where in the UI</th>
+                <th>Setup Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><b>Ren iPhi</b> (ERP)</td><td><span class="ipin ipin-integration">Integration</span></td><td>Balances, grant history, statements, performance, TransactionID/DistributionID</td><td>OAuth 2.0 client credentials; GraphQL endpoint; idempotency keys mandatory on writes</td></tr>
+              <tr><td><b>Salesforce</b> (CRM)</td><td><span class="ipin ipin-integration">Integration</span></td><td>Advisor info, comm prefs, profile sync, conversation history</td><td>REST + Platform Events; PartyID reconciliation; 5-min sync SLA</td></tr>
+              <tr><td><b>Candid</b></td><td><span class="ipin ipin-integration">Integration</span></td><td>Grant recipient search (501(c)(3) universe)</td><td>API key; tiered rate limits; heavy local caching</td></tr>
+              <tr><td><b>PSP</b> (Stripe/Braintree/etc.)</td><td><span class="ipin ipin-integration">Integration</span></td><td>Contributions, payment methods (hosted fields only)</td><td>PSP-hosted fields; webhook signature verification; PCI SAQ-A or SAQ-A-EP</td></tr>
+              <tr><td><b>Identity Provider</b></td><td><span class="ipin ipin-setup">Setup</span></td><td>Login, MFA, registration, multi-user invite acceptance</td><td>Entra External ID assumed; OIDC + PKCE; mandatory MFA; step-up policies</td></tr>
+              <tr><td><b>Headless CMS</b></td><td><span class="ipin ipin-integration">Integration</span></td><td>Stories, learning tracks, legal docs</td><td>Webhook-driven cache warming; Impact Agenda taxonomy</td></tr>
+              <tr><td><b>Email / SMS Provider</b></td><td><span class="ipin ipin-integration">Integration</span></td><td>Receipts, Posted notifications, invitations</td><td>Transactional templates; deliverability monitoring; opt-out compliance</td></tr>
+              <tr><td><b>PLAID</b> (Phase 2)</td><td><span class="ipin ipin-integration">Integration</span></td><td>Bank linking, integrated financial view, round-ups</td><td>Link token issuance; legal review of consumer data usage</td></tr>
+              <tr><td><b>Grant Letter Pick List</b></td><td><span class="ipin ipin-config">Config</span></td><td>Grant recommendation form</td><td>Foundation admin UI; versioned; cached at BFF</td></tr>
+              <tr><td><b>Home Page Widget Contract</b></td><td><span class="ipin ipin-config">Config</span></td><td>Home page customization</td><td>Defines widget IDs, sizes, default order, required widgets</td></tr>
+              <tr><td><b>Favorites &amp; Cart State</b></td><td><span class="ipin ipin-config">Config</span></td><td>Cart, favorites list, recent grants</td><td>Portal-owned state in Postgres + Redis</td></tr>
+              <tr><td><b>Audit Log</b></td><td><span class="ipin ipin-config">Config</span></td><td>Recent sign-ins, family access changes, grant submissions</td><td>7-year retention; immutable; queryable by donor &amp; ops</td></tr>
+              <tr><td><b>MFA Policy</b></td><td><span class="ipin ipin-security">Security</span></td><td>Login, sensitive operations</td><td>TOTP preferred; SMS fallback only; step-up thresholds configurable</td></tr>
+              <tr><td><b>RBAC Model</b></td><td><span class="ipin ipin-security">Security</span></td><td>Family Access management</td><td>Primary / Joint / Successor / Family Invitee / Public / Staff / Admin</td></tr>
+              <tr><td><b>WAF + Edge Headers</b></td><td><span class="ipin ipin-security">Security</span></td><td>Topbar (all pages)</td><td>OWASP CRS + GraphQL-specific rules; CSP / HSTS / Strict CORS</td></tr>
+              <tr><td><b>GrantBatchSubmitted</b></td><td><span class="ipin ipin-event">Event</span></td><td>Cart submission</td><td>Triggers durable workflow: create TransactionID + DistributionID per item</td></tr>
+              <tr><td><b>GrantPosted</b></td><td><span class="ipin ipin-event">Event</span></td><td>Grant status badge, notification</td><td>Fired on Ren iPhi webhook or scheduled poll; drives donor notification</td></tr>
+              <tr><td><b>ContributionSettled</b></td><td><span class="ipin ipin-event">Event</span></td><td>Contribution confirmation</td><td>PSP webhook → BFF → Ren iPhi mutation → email receipt</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ============================================================
+     Cart Drawer
+     ============================================================ -->
+<div class="cart-drawer" id="cartDrawer">
+  <div class="cart-head">
+    <div>
+      <h3>Grant Cart</h3>
+      <div style="font-size: 12px; color: var(--ink-faint); margin-top: 2px;">One batch · One receipt email</div>
+    </div>
+    <button class="icon-btn" onclick="toggleCart()">✕</button>
+  </div>
+  <div class="cart-body" id="cartBody">
+    <!-- populated by JS -->
+  </div>
+  <div class="cart-foot">
+    <div class="cart-total"><span>Total</span><span id="cartTotal">$8,500</span></div>
+    <button class="btn btn-accent" style="width:100%; justify-content:center;" onclick="submitCart()">Submit Cart</button>
+    <div style="margin-top:10px; font-size:11px; color:var(--ink-faint); text-align:center; line-height:1.5;">
+      Submitting triggers <span class="ipin ipin-event" data-pin="grant-event">GrantBatchSubmitted</span>. Each grant creates a TransactionID + DistributionID in Ren iPhi.
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     Pin toggle & Modal
+     ============================================================ -->
+<button class="pin-toggle" id="pinToggle" onclick="togglePins()">
+  <div class="swatch">
+    <span style="background:#EE7331;"></span>
+    <span style="background:#086C43;"></span>
+    <span style="background:#1A8DA9;"></span>
+    <span style="background:#CC1E4B;"></span>
+  </div>
+  Integration Pins: ON
+</button>
+
+<div class="modal-backdrop" id="modal" onclick="if(event.target===this) closeModal()">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-head">
+      <div class="kind" id="modalKind">Integration</div>
+      <h3 id="modalTitle">Title</h3>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   Integration / Config / Setup details by pin id
+   ============================================================ */
+const PIN_DETAILS = {
+  'idp': {
+    kind: 'Setup',
+    title: 'Identity Provider (IdP)',
+    body: `<p>Authentication is delegated to a dedicated Identity Provider, separate from Ren iPhi and Salesforce.</p>
+      <div class="label">Working Assumption</div>
+      <p>Microsoft Entra External ID (formerly Azure AD B2C), aligned with Foundation's Microsoft ecosystem. Auth0 is a viable alternative.</p>
+      <div class="label">Protocols</div>
+      <p>OIDC with PKCE for the PWA. SAML available where needed.</p>
+      <div class="label">Setup Required</div>
+      <p>Provision tenant; configure password &amp; lockout policies; enroll MFA methods (TOTP primary, SMS fallback); design step-up policies; build self-service flows for registration, password reset, and account recovery.</p>
+      <pre>// OIDC client config
+client_id: portal-pwa
+scope: openid profile email offline_access
+response_type: code
+code_challenge_method: S256
+mfa_required: true</pre>`
+  },
+  'ren-iphi-balance': {
+    kind: 'Integration',
+    title: 'Ren iPhi — Balance &amp; Performance Read',
+    body: `<p>Ren iPhi is the system of record for all fund financial data. The BFF reads via GraphQL and caches aggressively.</p>
+      <div class="label">Operation</div>
+      <p><code>query fundBalance($partyId: ID!, $fundId: ID!)</code></p>
+      <div class="label">Caching Strategy</div>
+      <p>Cache balances with short TTL (≤5 min). Cache reference data (fund metadata, pool definitions) with longer TTL (≥1 hour). Invalidate on <code>ContributionSettled</code> or <code>GrantPosted</code> events.</p>
+      <div class="label">Resilience</div>
+      <p>Circuit breaker; on sustained failure, the portal degrades to last-known balance with a "as of" timestamp.</p>`
+  },
+  'ren-iphi-grants': {
+    kind: 'Integration',
+    title: 'Ren iPhi — Grant Records &amp; Status Sync',
+    body: `<p>The portal mirrors grant records from Ren iPhi, tracking each through Entered → Approved → Posted.</p>
+      <div class="label">Read</div>
+      <p>Periodic GraphQL query for grants where status changed since last sync.</p>
+      <div class="label">Webhook (preferred)</div>
+      <p>Ren iPhi pushes status-change events. If unavailable, fall back to a scheduled poll every 5 minutes.</p>
+      <div class="label">Portal-side</div>
+      <p>Status transitions emit domain events (<code>GrantEntered</code>, <code>GrantApproved</code>, <code>GrantPosted</code>) consumed by the notification service.</p>`
+  },
+  'ren-iphi-funds': {
+    kind: 'Integration',
+    title: 'Ren iPhi — Donor &amp; Fund Lookup',
+    body: `<p>On first login (after IdP authentication), the BFF resolves the authenticated user's PartyID and pulls the fund holdings they advise.</p>
+      <div class="label">Operation</div>
+      <p><code>query donorByPartyId($partyId: ID!)</code> returns fund roles, account types, and Impact Agenda attributes.</p>
+      <div class="label">Authorization</div>
+      <p>Every fund-scoped resolver verifies the user holds an authorized role on the requested fund.</p>`
+  },
+  'ren-iphi-perf': {
+    kind: 'Integration',
+    title: 'Ren iPhi — Performance Trending',
+    body: `<p>Historical performance time series for each fund.</p>
+      <div class="label">Operation</div>
+      <p><code>query performanceHistory($fundId: ID!, $range: DateRange!)</code></p>
+      <div class="label">Caching</div>
+      <p>Historical data is highly cacheable (TTL: 6 hours); only the most recent data point invalidates frequently.</p>`
+  },
+  'ren-iphi-pool': {
+    kind: 'Integration',
+    title: 'Ren iPhi — Investment Pool Reference Data',
+    body: `<p>Pool allocation definitions and per-fund allocations.</p>
+      <div class="label">Phase 1</div>
+      <p>Read-only display of current allocation.</p>
+      <div class="label">Phase 2 (FR-C-07, FR-I-03)</div>
+      <p>Per-gift pool selection at contribution time; rebalance requests (trigger internal workflow, not direct trading).</p>`
+  },
+  'ren-iphi-tax': {
+    kind: 'Integration',
+    title: 'Ren iPhi — Contribution &amp; Tax Records',
+    body: `<p>YTD contributions, tax-receipt-eligible metadata, and downloadable tax summary letter.</p>
+      <div class="label">Operations</div>
+      <p><code>query contributionsByYear</code>, <code>query taxLetter</code></p>
+      <div class="label">Storage</div>
+      <p>Generated tax letter PDFs stored in object storage; delivered to PWA via signed URL.</p>`
+  },
+  'salesforce-advisor': {
+    kind: 'Integration',
+    title: 'Salesforce — Advisor Information',
+    body: `<p>Salesforce holds advisor assignments, contact methods, and relationship history.</p>
+      <div class="label">Operation</div>
+      <p><code>SOQL: SELECT Advisor__c, Advisor.Name, Advisor.Phone FROM Contact WHERE PartyID__c = :partyId</code></p>
+      <div class="label">Use</div>
+      <p>Renders advisor card on home page and dedicated advisor page; "Send Message" and "Schedule Call" actions create Salesforce Activities.</p>`
+  },
+  'salesforce-sync': {
+    kind: 'Integration',
+    title: 'Salesforce — Profile &amp; Preferences Sync',
+    body: `<p>Bidirectional sync of donor profile and communication preferences.</p>
+      <div class="label">Pattern</div>
+      <p>Portal → Salesforce via async event bus (<code>ProfileUpdated</code>). Salesforce → Portal via Platform Events or Change Data Capture.</p>
+      <div class="label">Idempotency</div>
+      <p>All upserts keyed on PartyID. Conflict resolution: profile fields owned by Salesforce; fund fields owned by Ren iPhi.</p>
+      <div class="label">SLA</div>
+      <p>Profile changes reflect in Salesforce within 5 minutes (FR-P-04).</p>`
+  },
+  'candid': {
+    kind: 'Integration',
+    title: 'Candid — 501(c)(3) Universe',
+    body: `<p>Candid (formerly GuideStar) is the source of truth for the U.S. 501(c)(3) directory (~2.3M organizations).</p>
+      <div class="label">Search Order</div>
+      <p>1. User favorites → 2. Foundation database (known recipients in Ren iPhi) → 3. Candid universe</p>
+      <div class="label">Caching</div>
+      <p>Frequently-searched results mirrored locally with TTL aligned to Candid's update cadence (typically 24 hours).</p>
+      <div class="label">Open Questions</div>
+      <p>Confirm Candid API tier and rate limits during procurement — affects search experience &amp; cost.</p>`
+  },
+  'psp': {
+    kind: 'Integration',
+    title: 'Payment Service Provider (PSP)',
+    body: `<p>All card and ACH processing handled by a PCI-DSS Level 1 PSP. Foundation infrastructure never touches PAN.</p>
+      <div class="label">Pattern</div>
+      <p>PSP-hosted iframe fields (or full redirect) for collection. PSP returns tokenized payment method references that the portal stores.</p>
+      <div class="label">Confirmation</div>
+      <p>PSP fires a webhook to the BFF on settlement. Webhook signature verified; idempotency key enforced.</p>
+      <div class="label">PCI Scope</div>
+      <p>SAQ-A or SAQ-A-EP, depending on integration pattern. Any deviation requires CISO sign-off.</p>`
+  },
+  'plaid': {
+    kind: 'Integration',
+    title: 'PLAID — Bank Linking (Phase 2)',
+    body: `<p>Allows donors to link bank accounts for direct funding, integrated financial view, and transaction round-ups.</p>
+      <div class="label">Setup</div>
+      <p>Issue Link token; user completes PLAID Link flow; portal stores Item ID (never credentials).</p>
+      <div class="label">Risk</div>
+      <p>Legal review of PLAID consumer-data privacy posture is required before Phase 2 commit (per §12 of TRD).</p>`
+  },
+  'wealth': {
+    kind: 'Integration',
+    title: 'Envestnet / Orion (Phase 3)',
+    body: `<p>Aggregation with major wealth-management platforms for advisors and clients.</p>
+      <div class="label">Phase</div>
+      <p>Phase 3 — out of scope for initial release; architecture must accommodate as additive module.</p>`
+  },
+  'cms': {
+    kind: 'Integration',
+    title: 'Headless CMS',
+    body: `<p>Content management for stories, news, learning tracks, and legal documents.</p>
+      <div class="label">Candidates</div>
+      <p>Contentful, Sanity, or Strapi. Selection driven by editorial UX and Impact Agenda taxonomy support.</p>
+      <div class="label">Targeting</div>
+      <p>Each content item is tagged with Impact Agenda attributes (Arts &amp; Culture, Workforce Development, etc.) and Account Type filters. The BFF personalizes feed per donor profile.</p>
+      <div class="label">Cache</div>
+      <p>Webhook-driven cache warming on publish; CDN-fronted for media assets.</p>`
+  },
+  'email': {
+    kind: 'Integration',
+    title: 'Transactional Email / SMS',
+    body: `<p>Sends contribution receipts, batch grant receipts, Posted notifications, family-access invitations, and tax letters.</p>
+      <div class="label">Candidates</div>
+      <p>SendGrid, Postmark, or AWS SES + Twilio. Selection driven by deliverability rates and template management.</p>
+      <div class="label">Critical Templates</div>
+      <p>Grant batch receipt (one per cart submission), Posted notification, family-access invite link.</p>`
+  },
+  'statements': {
+    kind: 'Integration',
+    title: 'Statement PDF Delivery',
+    body: `<p>Quarterly and annual statements are generated by Ren iPhi and stored in object storage.</p>
+      <div class="label">Delivery</div>
+      <p>The BFF returns a signed URL with a 5-minute expiration to the PWA, which initiates download without ever proxying the PDF.</p>
+      <div class="label">Object Store</div>
+      <p>Azure Blob Storage, AWS S3, or GCS — encrypted at rest with CMK.</p>`
+  },
+  'home-layout': {
+    kind: 'Config',
+    title: 'Customizable Home Page — Widget Contract',
+    body: `<p>Per FR-E-04, donors can reorder and hide home-page modules. This requires a stable widget contract.</p>
+      <div class="label">Widget Contract</div>
+      <p>Each widget declares: ID, name, default size (4/6/8/12 col), required vs. optional, data source, and rendering component.</p>
+      <div class="label">Storage</div>
+      <p>Per-user layout persisted in <code>HomePageLayout</code> table; cached in Redis.</p>
+      <pre>{ "user_id": "u_2849156",
+  "widgets": [
+    { "id": "hero",        "visible": true, "order": 1, "size": 8 },
+    { "id": "balance",     "visible": true, "order": 2, "size": 4 },
+    { "id": "recentGrants","visible": true, "order": 3, "size": 6 },
+    ...
+  ]
+}</pre>
+      <div class="label">Open Question (§12)</div>
+      <p>Define minimum-required widgets before Phase 1 design freeze.</p>`
+  },
+  'picklist-config': {
+    kind: 'Config',
+    title: 'Grant Letter Pick List',
+    body: `<p>Per FR-G-02, the grant-letter information fields are a configurable, structured pick list maintained by Foundation administrators.</p>
+      <div class="label">Fields</div>
+      <p>Grant Purpose, Recognition (Use name / Anonymous / In honor of / In memory of), Restrictions / Notes. Additional fields may be added by admins without engineering deploys.</p>
+      <div class="label">Versioning</div>
+      <p>Pick list is versioned. Historic grants retain the version that was in effect at submission time.</p>
+      <div class="label">Admin UI</div>
+      <p>Internal admin tool — not part of the donor portal itself but consumes the same data store.</p>`
+  },
+  'favorites-config': {
+    kind: 'Config',
+    title: 'Favorites &amp; Recent Grants — Portal State',
+    body: `<p>Favorites and recent-grant lists are portal-owned data (not Ren iPhi).</p>
+      <div class="label">Storage</div>
+      <p>Postgres <code>Favorite</code> table keyed on (user_id, recipient_external_id, recipient_source).</p>
+      <div class="label">Sources</div>
+      <p>A recipient may originate from the Foundation database (Ren iPhi) or Candid. The portal carries the source so re-lookups stay consistent.</p>`
+  },
+  'pwa-setup': {
+    kind: 'Setup',
+    title: 'PWA Manifest, Service Worker &amp; Push',
+    body: `<p>The PWA satisfies FR §7.1 — mobile-first, installable, offline-capable, push-enabled.</p>
+      <div class="label">Manifest</div>
+      <p><code>/manifest.webmanifest</code> declares name, icons, theme color (TCF dark green), display mode (standalone), and start URL.</p>
+      <div class="label">Service Worker</div>
+      <p>Workbox-based service worker. Cache strategies: stale-while-revalidate for shell, cache-first for static, network-first for live data.</p>
+      <div class="label">Push Notifications</div>
+      <p>Web Push API for Posted notifications. Per §12 of TRD, iOS Safari push has limitations — must degrade gracefully to email.</p>
+      <div class="label">Offline Behavior</div>
+      <p>Read-only access to last-loaded balances, recent grants, and learning content. Cart contents persist offline and submit when connectivity returns.</p>`
+  },
+  'rebalance-config': {
+    kind: 'Config',
+    title: 'Rebalance Request Workflow',
+    body: `<p>Per FR-I-03 (Phase 2), donors can request rebalancing across investment pools.</p>
+      <div class="label">Critical Constraint</div>
+      <p>This is a <strong>request</strong>, not direct trading. It triggers an internal workflow that creates a Ren iPhi task for the Foundation's investment operations team.</p>
+      <div class="label">Event</div>
+      <p><code>RebalanceRequested</code> on the event bus → workflow engine → Ren iPhi mutation → donor sees status.</p>`
+  },
+  'pool-allocation': {
+    kind: 'Config',
+    title: 'Per-Gift Pool Allocation (Phase 2)',
+    body: `<p>FR-C-07 — Phase 2.</p>
+      <p>Donors may select pool allocation at contribution time rather than relying on the fund's default allocation policy. Requires Ren iPhi mutation to accept per-contribution pool selection.</p>
+      <div class="label">Confirm in Schema Audit</div>
+      <p>Listed as an open question for the Phase 2 design phase.</p>`
+  },
+  'partyid': {
+    kind: 'Setup',
+    title: 'PartyID — Cross-System Reconciliation Key',
+    body: `<p>PartyID is the identifier that ties together Salesforce contacts and Ren iPhi donor records.</p>
+      <div class="label">Risk (§12)</div>
+      <p>Salesforce ↔ Ren iPhi PartyID reconciliation gaps are a known data-integrity risk. A pre-launch reconciliation project and exception report tooling are required.</p>
+      <div class="label">For Public Registrants</div>
+      <p>Users who register without a DAF are provisioned in Salesforce only (no Ren iPhi record). PartyID applies once they open a DAF.</p>`
+  },
+  'mfa': {
+    kind: 'Security',
+    title: 'Multi-Factor Authentication',
+    body: `<p>MFA is mandatory for all donor accounts (FR-P-01).</p>
+      <div class="label">Primary Method</div>
+      <p>TOTP via authenticator app (Microsoft Authenticator, Google Authenticator, 1Password, etc.) or push.</p>
+      <div class="label">Fallback</div>
+      <p>SMS — only with risk-based step-up. Not enabled by default.</p>
+      <div class="label">Step-Up Authentication</div>
+      <p>Required for: large contributions, grant cart submissions above a configurable threshold, payment method changes, profile email changes, family-access invitations.</p>`
+  },
+  'step-up': {
+    kind: 'Security',
+    title: 'Step-Up Authentication',
+    body: `<p>High-value or destructive operations require a fresh MFA challenge regardless of session age.</p>
+      <div class="label">Triggered By</div>
+      <p>Contributions above $X (configurable), grant cart submission above $Y (configurable), payment method add/edit/delete, email-of-record change, family invitation.</p>
+      <div class="label">UX</div>
+      <p>Modal interrupt with MFA prompt; on success, the original operation completes. On cancel, the operation is aborted with no partial state.</p>`
+  },
+  'rbac': {
+    kind: 'Security',
+    title: 'Role-Based Access Control',
+    body: `<p>Per FR-P-06 and §8.3, multi-user account access is a first-class authorization concern.</p>
+      <div class="label">Roles</div>
+      <p>Primary Advisor, Joint Advisor, Successor / Family Invitee, Public Registrant, Philanthropic Advisor (staff), Administrator.</p>
+      <div class="label">Capability Levels for Invitees</div>
+      <p>View-only · View-and-recommend · Full advisory (granted by Primary Advisor).</p>
+      <div class="label">Enforcement</div>
+      <p>Every BFF resolver scoped at the fund level. <code>UserFundRole</code> table tracks the grant.</p>
+      <div class="label">Audit</div>
+      <p>All actions by invited users are independently attributed in the audit log (FR-P-07).</p>`
+  },
+  'security-headers': {
+    kind: 'Security',
+    title: 'Edge Security — WAF, Headers, Bot Management',
+    body: `<p>The edge layer is the first line of defense.</p>
+      <div class="label">WAF</div>
+      <p>OWASP Core Rule Set plus custom rules for GraphQL-specific attacks: query depth limiting, alias/directive abuse, complexity scoring.</p>
+      <div class="label">Headers</div>
+      <p>HSTS, strict CSP, same-site cookies, X-Frame-Options, X-Content-Type-Options. Validated in CI.</p>
+      <div class="label">Bot Management</div>
+      <p>Suppresses credential stuffing and scraping of donor data.</p>`
+  },
+  'audit': {
+    kind: 'Config',
+    title: 'Audit Log',
+    body: `<p>Every user-initiated action is logged: timestamp, actor (and impersonator, if staff), IP, user-agent, fund context, action, outcome.</p>
+      <div class="label">Retention</div>
+      <p>Seven years, aligned with donor recordkeeping expectations (§6.5).</p>
+      <div class="label">Surface</div>
+      <p>Donor sees recent sign-ins and a recent-activity view. Foundation ops has full query access. Staff impersonations are surfaced to the donor.</p>`
+  },
+  'legal-config': {
+    kind: 'Config',
+    title: 'Legal Acknowledgements',
+    body: `<p>The new-DAF workflow requires the donor to acknowledge fund terms, governance, and tax implications.</p>
+      <div class="label">Storage</div>
+      <p>Versioned legal documents in the CMS; donor's acknowledged version, timestamp, and IP captured in the audit log.</p>`
+  },
+  'learning-config': {
+    kind: 'Config',
+    title: 'Learning Tracks (Phase 2)',
+    body: `<p>FR-E-05 — Phase 2.</p>
+      <p>Self-paced learning content (estate planning, tax strategy, multi-generational giving) authored in the CMS and surfaced based on donor profile attributes.</p>`
+  },
+  'contrib-event': {
+    kind: 'Event',
+    title: 'ContributionInitiated → ContributionSettled',
+    body: `<p>A contribution flows through several systems and several states.</p>
+      <div class="label">Flow</div>
+      <pre>1. Donor submits → BFF persists ContributionIntent
+2. PSP collects payment (hosted fields)
+3. PSP webhook → BFF (signature verified)
+4. BFF emits ContributionInitiated event
+5. Workflow engine calls Ren iPhi mutation
+6. Ren iPhi returns TransactionID → intent updated
+7. BFF emits ContributionSettled event
+8. Email service sends receipt</pre>
+      <div class="label">Idempotency</div>
+      <p>Idempotency key carried end-to-end. Retries never produce duplicate contributions.</p>`
+  },
+  'grant-event': {
+    kind: 'Event',
+    title: 'Grant Cart Submission — Reference Sequence',
+    body: `<p>The cart submission is the most consequential donor-initiated workflow (§5.2.1).</p>
+      <pre>1. Donor adds grants to cart (portal-side, no Ren iPhi calls)
+2. Donor reviews cart and submits
+3. BFF persists CartSubmission intent in portal DB
+   with idempotency key
+4. BFF emits GrantBatchSubmitted event
+5. Workflow engine processes each grant in the batch:
+   a. Resolves recipient (internal DB or Candid)
+   b. Calls Ren iPhi mutation -> TransactionID returned
+   c. Calls Ren iPhi mutation -> DistributionID returned
+   d. Updates intent with returned IDs, status=Entered
+6. When all grants persisted, notification service sends
+   ONE consolidated receipt email summarizing the batch
+7. Foundation back-office review transitions each grant:
+   Entered -> Approved -> Posted (via Ren iPhi webhook
+   or scheduled poll)
+8. On Posted, notification service fires donor's
+   Posted notification per channel preferences</pre>`
+  }
+};
+
+/* ============================================================
+   Navigation
+   ============================================================ */
+function navigate(view) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + view).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelector(`.nav-item[data-view="${view}"]`)?.classList.add('active');
+  const labels = { home:'Home', funds:'My Funds', contributions:'Contributions', grants:'Grants', cart:'Grant Cart', performance:'Performance', impact:'Impact & Stories', advisor:'My Advisor', family:'Family Access', settings:'Settings & Security', architecture:'Architecture Map' };
+  document.getElementById('bcrumb').textContent = '/ ' + (labels[view] || view);
+  if (view === 'cart') toggleCart();
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll('.nav-item').forEach(n => n.addEventListener('click', () => navigate(n.dataset.view)));
+
+/* ============================================================
+   Subtabs
+   ============================================================ */
+function switchSubtab(tab, contentId) {
+  const parent = tab.closest('.subtabs').parentElement;
+  parent.querySelectorAll('.subtab').forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+  parent.querySelectorAll('[id^="contrib-"], [id^="grant-"]').forEach(c => { c.style.display = 'none'; });
+  const target = document.getElementById(contentId);
+  if (target) target.style.display = '';
+}
+
+/* ============================================================
+   Cart
+   ============================================================ */
+let cart = [
+  { name: 'Cleveland Orchestra', amount: 5000, purpose: 'General Operating' },
+  { name: 'Greater Cleveland Food Bank', amount: 2500, purpose: 'General Operating' },
+  { name: 'Literary Cleveland', amount: 1000, purpose: 'Youth Programming' }
+];
+
+function renderCart() {
+  const body = document.getElementById('cartBody');
+  if (cart.length === 0) {
+    body.innerHTML = '<div class="cart-empty">Your grant cart is empty.<br>Recommend a grant to add one.</div>';
+  } else {
+    body.innerHTML = cart.map((item, i) => `
+      <div class="cart-item">
+        <div class="recipient">
+          <div class="org-mark alt-${i % 4}">${item.name.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase()}</div>
+        </div>
+        <div style="flex:1;">
+          <div style="font-weight: 600;">${item.name}</div>
+          <div style="font-size: 12px; color: var(--ink-faint);">${item.purpose}</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="amount">$${item.amount.toLocaleString()}</div>
+          <button onclick="removeCart(${i})" style="font-size:11px; color: var(--tcf-red);">Remove</button>
+        </div>
+      </div>
+    `).join('');
+  }
+  const total = cart.reduce((s, x) => s + x.amount, 0);
+  document.getElementById('cartTotal').textContent = '$' + total.toLocaleString();
+  document.getElementById('cartCountNav').textContent = cart.length;
+  document.getElementById('cartCountBtn') && (document.getElementById('cartCountBtn').textContent = cart.length);
+}
+function toggleCart() { document.getElementById('cartDrawer').classList.toggle('open'); }
+function addToCart(name, amount=1000) {
+  cart.push({ name, amount, purpose: 'General Operating' });
+  renderCart();
+  showToast(`Added "${name}" to cart (${cart.length} item${cart.length>1?'s':''}).`);
+}
+function removeCart(i) { cart.splice(i, 1); renderCart(); }
+function submitCart() {
+  if (cart.length === 0) return;
+  showToast(`Cart submitted. ${cart.length} grants queued — one batch receipt email coming. GrantBatchSubmitted event fired.`, 5000);
+  cart = []; renderCart(); toggleCart();
+}
+renderCart();
+
+/* ============================================================
+   Pin modal
+   ============================================================ */
+document.body.addEventListener('click', (e) => {
+  const pin = e.target.closest('.ipin');
+  if (!pin) return;
+  e.preventDefault(); e.stopPropagation();
+  const id = pin.dataset.pin;
+  const info = PIN_DETAILS[id];
+  if (!info) return;
+  document.getElementById('modalKind').textContent = info.kind.toUpperCase();
+  document.getElementById('modalKind').style.color =
+    info.kind === 'Integration' ? 'var(--tcf-orange)' :
+    info.kind === 'Config'      ? 'var(--tcf-mid-green)' :
+    info.kind === 'Setup'       ? 'var(--tcf-blue)' :
+    info.kind === 'Security'    ? 'var(--tcf-red)' :
+    info.kind === 'Event'       ? '#0E8378' :
+    'var(--tcf-primary)';
+  document.getElementById('modalTitle').textContent = info.title;
+  document.getElementById('modalBody').innerHTML = info.body;
+  document.getElementById('modal').classList.add('open');
+});
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+/* ============================================================
+   Toggle pins
+   ============================================================ */
+function togglePins() {
+  document.body.classList.toggle('pins-hidden');
+  const on = !document.body.classList.contains('pins-hidden');
+  document.getElementById('pinToggle').innerHTML = `
+    <div class="swatch">
+      <span style="background:#EE7331;"></span>
+      <span style="background:#086C43;"></span>
+      <span style="background:#1A8DA9;"></span>
+      <span style="background:#CC1E4B;"></span>
+    </div>
+    Integration Pins: ${on ? 'ON' : 'OFF'}
+  `;
+}
+
+/* ============================================================
+   Edit mode (home page)
+   ============================================================ */
+function toggleEditMode() {
+  document.body.classList.toggle('edit-mode');
+  const on = document.body.classList.contains('edit-mode');
+  document.getElementById('editBtn').textContent = on ? 'Done Editing' : 'Customize Home';
+  if (on) showToast('Drag widgets to reorder. Layout saves automatically.');
+}
+
+/* Simple drag-and-drop for widgets in edit mode */
+const grid = document.getElementById('widgetGrid');
+let dragSrc = null;
+if (grid) {
+  grid.addEventListener('dragstart', (e) => {
+    if (!document.body.classList.contains('edit-mode')) { e.preventDefault(); return; }
+    dragSrc = e.target.closest('.widget');
+    if (dragSrc) dragSrc.style.opacity = '0.4';
+  });
+  grid.addEventListener('dragend', (e) => { if (dragSrc) dragSrc.style.opacity = '1'; dragSrc = null; });
+  grid.addEventListener('dragover', (e) => { if (document.body.classList.contains('edit-mode')) e.preventDefault(); });
+  grid.addEventListener('drop', (e) => {
+    e.preventDefault();
+    if (!dragSrc) return;
+    const target = e.target.closest('.widget');
+    if (target && target !== dragSrc) {
+      const rect = target.getBoundingClientRect();
+      const after = (e.clientY - rect.top) > rect.height / 2;
+      target.parentNode.insertBefore(dragSrc, after ? target.nextSibling : target);
+      showToast('Layout saved.');
+    }
+  });
+}
+
+/* ============================================================
+   Toast
+   ============================================================ */
+let toastTimer;
+function showToast(msg, dur=3000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), dur);
+}
+</script>
+
+</body>
+</html>
